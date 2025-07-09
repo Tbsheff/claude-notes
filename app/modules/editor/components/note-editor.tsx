@@ -1,68 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Share, MoreHorizontal, Zap, Bold, Italic, Underline, Copy, Scissors, Star } from 'lucide-react'
-
-interface SelectionToolbarProps {
-  selectedText: string
-  position: { x: number, y: number }
-  onBuild: () => void
-  onFormat: (format: string) => void
-  onClose: () => void
-}
-
-function SelectionToolbar({ selectedText, position, onBuild, onFormat, onClose }: SelectionToolbarProps) {
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.closest('.selection-toolbar')) {
-        onClose()
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [onClose])
-
-  const toolbarButtons = [
-    { icon: Bold, action: 'bold', tooltip: 'Bold' },
-    { icon: Italic, action: 'italic', tooltip: 'Italic' },
-    { icon: Underline, action: 'underline', tooltip: 'Underline' },
-    { icon: Copy, action: 'copy', tooltip: 'Copy' },
-    { icon: Scissors, action: 'cut', tooltip: 'Cut' },
-  ]
-
-  return (
-    <div 
-      className="selection-toolbar fixed z-50 bg-gray-900 text-white rounded-xl shadow-2xl p-1 flex flex-col items-center space-y-1 animate-in fade-in duration-200"
-      style={{ 
-        left: position.x, 
-        top: position.y,
-        width: '60px'
-      }}
-    >
-      {toolbarButtons.map(({ icon: Icon, action, tooltip }) => (
-        <button
-          key={action}
-          onClick={() => onFormat(action)}
-          className="p-2 rounded-lg hover:bg-gray-700 transition-colors duration-150 group relative w-full flex justify-center"
-          title={tooltip}
-        >
-          <Icon className="h-4 w-4" />
-        </button>
-      ))}
-      
-      <div className="h-px w-6 bg-gray-600 my-1" />
-      
-      <button
-        onClick={onBuild}
-        className="flex flex-col items-center space-y-1 px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-150 text-xs font-medium w-full"
-      >
-        <Zap className="h-4 w-4" />
-        <span>Build</span>
-      </button>
-    </div>
-  )
-}
+import { NoteEditorHeader } from './note-editor-header'
+import { NoteEditorFooter } from './note-editor-footer'
+import { SelectionToolbar } from './selection-toolbar'
 
 export function NoteEditor() {
   const [content, setContent] = useState('')
@@ -72,8 +11,9 @@ export function NoteEditor() {
   const [isBuilding, setIsBuilding] = useState(false)
   const [buildStatus, setBuildStatus] = useState('Building...')
   const [aiInitialized, setAiInitialized] = useState(false)
-  const [createdAt] = useState(new Date()) // Store the creation time
+  const [createdAt] = useState(new Date())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const initializeAI = async () => {
@@ -97,70 +37,48 @@ export function NoteEditor() {
     initializeAI()
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleTextSelection = () => {
     if (!textareaRef.current) return
+
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current)
+    }
 
     const selection = window.getSelection()
     const selectedText = selection?.toString()
     
     if (selectedText && selectedText.trim().length > 0) {
-      const range = selection?.getRangeAt(0)
-      const rect = range?.getBoundingClientRect()
-      
-      if (rect) {
-        setSelectedText(selectedText)
+      selectionTimeoutRef.current = setTimeout(() => {
+        const range = selection?.getRangeAt(0)
+        const rect = range?.getBoundingClientRect()
         
-        // Расчет позиции с проверкой границ экрана для вертикального тулбара
-        const toolbarWidth = 60
-        const toolbarHeight = 200 // приблизительная высота вертикального тулбара
-        let x = rect.left + rect.width / 2 - toolbarWidth / 2
-        let y = rect.top - toolbarHeight - 10
-        
-        // Проверяем границы экрана
-        if (x < 10) x = 10
-        if (x + toolbarWidth > window.innerWidth - 10) x = window.innerWidth - toolbarWidth - 10
-        if (y < 10) y = rect.bottom + 10
-        
-        setToolbarPosition({ x, y })
-        setShowToolbar(true)
-      }
+        if (rect) {
+          setSelectedText(selectedText)
+          
+          const toolbarWidth = 240
+          const toolbarHeight = 40
+          let x = rect.left + rect.width / 2 - toolbarWidth / 2
+          let y = rect.top - toolbarHeight - 10
+          
+          if (x < 10) x = 10
+          if (x + toolbarWidth > window.innerWidth - 10) x = window.innerWidth - toolbarWidth - 10
+          if (y < 10) y = rect.bottom + 10
+          
+          setToolbarPosition({ x, y })
+          setShowToolbar(true)
+        }
+      }, 200)
     } else {
       setShowToolbar(false)
     }
-  }
-
-  const handleFormat = (format: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
-
-    let formattedText = selectedText
-    
-    switch (format) {
-      case 'bold':
-        formattedText = `**${selectedText}**`
-        break
-      case 'italic':
-        formattedText = `*${selectedText}*`
-        break
-      case 'underline':
-        formattedText = `<u>${selectedText}</u>`
-        break
-      case 'copy':
-        navigator.clipboard.writeText(selectedText)
-        return
-      case 'cut':
-        navigator.clipboard.writeText(selectedText)
-        formattedText = ''
-        break
-    }
-
-    const newContent = content.substring(0, start) + formattedText + content.substring(end)
-    setContent(newContent)
-    setShowToolbar(false)
   }
 
   const handleBuild = async () => {
@@ -180,26 +98,11 @@ export function NoteEditor() {
       
       if (result.success) {
         console.log('AI Response:', result.response)
+        setBuildStatus('Changes applied, auto-reload will trigger...')
         
-        // Показываем статус перезагрузки и rebuild
-        setBuildStatus('Changes applied, rebuilding...')
-        
-        setTimeout(async () => {
-          try {
-            if (window.electronAPI?.app?.rebuildAndReload) {
-              await window.electronAPI.app.rebuildAndReload()
-            } else if (window.electronAPI?.app?.reloadWindow) {
-              window.electronAPI.app.reloadWindow()
-            } else {
-              // Fallback: перезагрузка через location.reload()
-              window.location.reload()
-            }
-          } catch (error) {
-            console.error('Rebuild error:', error)
-            // Fallback to simple reload
-            window.location.reload()
-          }
-        }, 500)
+        setTimeout(() => {
+          setIsBuilding(false)
+        }, 3000)
       } else {
         console.error('AI Error:', result.error)
         alert('AI Error: ' + result.error)
@@ -214,41 +117,14 @@ export function NoteEditor() {
 
   return (
     <div className="w-full h-screen flex flex-col bg-white">
-      <div className="border-b border-gray-200 p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-500">
-            {createdAt.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })} at {createdAt.toLocaleTimeString('en-US', { 
-              hour: 'numeric', 
-              minute: '2-digit',
-              hour12: true 
-            })}
-          </span>
-          {isBuilding && (
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm text-blue-600 font-medium">{buildStatus}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="hover:bg-gray-100">
-            <Share className="h-4 w-4 text-gray-600 hover:text-gray-800" />
-          </Button>
-          <Button variant="ghost" size="sm" className="hover:bg-gray-100">
-            <Star className="h-4 w-4 text-gray-600 hover:text-gray-800" />
-          </Button>
-          <Button variant="ghost" size="sm" className="hover:bg-gray-100">
-            <MoreHorizontal className="h-4 w-4 text-gray-600 hover:text-gray-800" />
-          </Button>
-        </div>
-      </div>
+      <NoteEditorHeader 
+        createdAt={createdAt}
+        isBuilding={isBuilding}
+        buildStatus={buildStatus}
+        content={content}
+      />
 
-      <div className="flex-1 p-6 bg-white relative">
+      <div className="flex-1 px-6 py-6 bg-white relative">
         <textarea
           ref={textareaRef}
           placeholder="Start writing your note..."
@@ -263,12 +139,16 @@ export function NoteEditor() {
           <SelectionToolbar
             selectedText={selectedText}
             position={toolbarPosition}
+            content={content}
+            setContent={setContent}
+            textareaRef={textareaRef}
             onBuild={handleBuild}
-            onFormat={handleFormat}
             onClose={() => setShowToolbar(false)}
           />
         )}
       </div>
+
+      <NoteEditorFooter characterCount={content.length} />
     </div>
   )
 } 

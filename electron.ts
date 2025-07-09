@@ -3,10 +3,9 @@ require('dotenv').config({ path: '.env.local' })
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const chokidar = require('chokidar')
-const { AIAgent } = require('./lib/ai-agent.js')
 
-let mainWindow = null
-let aiAgent = null
+let mainWindow: any = null
+let aiAgent: any = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -37,208 +36,209 @@ function createWindow() {
   }
 }
 
+app.whenReady().then(() => {
+  createWindow()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
+  })
+})
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
 ipcMain.handle('ai:initialize', async (event, config = {}) => {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY || (config as any).apiKey
+    const apiKey = process.env.ANTHROPIC_API_KEY || (config as any).apiKey
     
     if (!apiKey) {
-      const error = 'OpenRouter API key not found in environment variables or config'
+      const error = 'Anthropic API key not found in environment variables or config'
       throw new Error(error)
     }
+
+    const { ClaudeCodeAgent } = await import('./lib/ai/agent/core')
     
-    aiAgent = new AIAgent({
-      openRouterApiKey: apiKey,
-      model: (config as any).model || 'anthropic/claude-sonnet-4',
-      projectRoot: path.join(__dirname, '..')
-    });
+    aiAgent = new ClaudeCodeAgent({
+      apiKey,
+      maxTurns: 50,
+      cwd: path.join(__dirname, '..'),
+      allowedTools: [
+        'Read', 'Write', 'Edit', 'Bash', 'List', 'Search', 'Find'
+      ],
+      permissionMode: 'acceptEdits'
+    })
+
+    await aiAgent.initialize()
     
-    return { success: true };
+    return { success: true }
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
-});
+})
 
 ipcMain.handle('ai:process-request', async (event, message) => {
-  if (!aiAgent) {
-    const error = 'AI Agent not initialized'
-    return { success: false, error };
-  }
-  
   try {
-    const response = await (aiAgent as any).processRequest(message);
-    return { success: true, response };
+    if (!aiAgent) {
+      throw new Error('AI Agent not initialized')
+    }
+
+    // Отмечаем что Claude начинает работу
+    claudeIsWorking = true
+    console.log('🚀 Claude Code: Starting work...')
+
+    const result = await aiAgent.processRequest(message)
+    
+    // Отмечаем что Claude закончил работу
+    claudeIsWorking = false
+    console.log('✅ Claude Code: Work completed')
+    
+    // Запускаем пересборку если были изменения
+    if (changedFiles.size > 0) {
+      setTimeout(() => rebuildAfterClaudeFinished(), 500) // Небольшая задержка для завершения записи файлов
+    }
+    
+    return result
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    claudeIsWorking = false
+    console.log('❌ Claude Code: Work failed')
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
-});
+})
+
+ipcMain.handle('app:reloadWindow', async () => {
+  if (mainWindow) {
+    mainWindow.reload()
+  }
+})
+
+ipcMain.handle('app:rebuildAndReload', async () => {
+  try {
+    console.log('🔄 Manual rebuild requested...')
+    
+    // Не нужно ничего делать - file watcher автоматически обнаружит изменения и пересоберет
+    // Просто сообщаем что все ок
+    return { success: true, message: 'Auto-rebuild will trigger when files change' }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
+})
+
+ipcMain.handle('app:getVersion', async () => {
+  return app.getVersion()
+})
 
 ipcMain.handle('dialog:openFile', async () => {
-  const { dialog } = require('electron');
+  const { dialog } = require('electron')
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
       { name: 'Text Files', extensions: ['txt', 'md'] },
       { name: 'All Files', extensions: ['*'] }
     ]
-  });
+  })
   
-  if (!result.canceled && result.filePaths.length > 0) {
-    const fs = require('fs');
-    return fs.readFileSync(result.filePaths[0], 'utf-8');
+  if (!result.canceled) {
+    const fs = require('fs')
+    const content = fs.readFileSync(result.filePaths[0], 'utf-8')
+    return content
   }
-  return undefined;
-});
+  return undefined
+})
 
 ipcMain.handle('dialog:saveFile', async (event, content) => {
-  const { dialog } = require('electron');
+  const { dialog } = require('electron')
   const result = await dialog.showSaveDialog(mainWindow, {
     filters: [
       { name: 'Text Files', extensions: ['txt', 'md'] },
       { name: 'All Files', extensions: ['*'] }
     ]
-  });
+  })
   
-  if (!result.canceled && result.filePath) {
-    const fs = require('fs');
-    fs.writeFileSync(result.filePath, content);
-    return true;
+  if (!result.canceled) {
+    const fs = require('fs')
+    fs.writeFileSync(result.filePath, content)
+    return true
   }
-  return false;
-});
+  return false
+})
 
-ipcMain.handle('app:getVersion', async () => {
-  return app.getVersion();
-});
+// File watcher всегда активен для auto-reload после AI изменений
+let changedFiles = new Set<string>()
+let claudeIsWorking = false
 
-ipcMain.handle('app:reloadWindow', async () => {
-  if (mainWindow) {
-    mainWindow.reload();
-  }
-});
+const watcher = chokidar.watch([
+  'app',
+  'components', 
+  'lib',
+  'styles',
+  'main.tsx',
+  'index.html'
+], {
+  ignored: /node_modules/,
+  persistent: true,
+  usePolling: true,
+  interval: 1000,
+  ignoreInitial: true
+})
 
-ipcMain.handle('app:rebuildAndReload', async () => {
+watcher.on('ready', () => {
+  console.log('🔍 File watcher is ready and watching for changes...')
+})
+
+watcher.on('change', (filePath) => {
+  console.log(`📁 File changed: ${filePath}`)
+  changedFiles.add(filePath)
+  
+  // Не пересобираем сразу, ждем когда Claude закончит
+})
+
+watcher.on('add', (filePath) => {
+  console.log(`➕ File added: ${filePath}`)
+})
+
+watcher.on('unlink', (filePath) => {
+  console.log(`➖ File removed: ${filePath}`)
+})
+
+watcher.on('error', (error) => {
+  console.error('❌ File watcher error:', error)
+})
+
+// Функция для пересборки после завершения работы Claude
+async function rebuildAfterClaudeFinished() {
+  if (changedFiles.size === 0) return
+  
+  console.log(`🔄 Auto-rebuilding after ${changedFiles.size} file changes...`)
+  console.log('📝 Changed files:', Array.from(changedFiles).join(', '))
+  
   try {
-    console.log('🔄 Rebuilding application...');
-    
-    // Rebuild только frontend
-    const { spawn } = require('child_process');
-    const buildVite = spawn('npm', ['run', 'build:vite'], { 
+    // Rebuild both frontend and electron
+    const { spawn } = require('child_process')
+    const buildProcess = spawn('npm', ['run', 'build'], { 
       stdio: 'inherit',
       shell: true 
-    });
+    })
     
-    buildVite.on('close', (code) => {
+    buildProcess.on('close', (code) => {
       if (code === 0) {
-        console.log('✅ Frontend rebuilt successfully');
+        console.log('✅ Both frontend and electron rebuilt, reloading...')
         if (mainWindow) {
-          mainWindow.reload();
+          mainWindow.reload()
         }
       } else {
-        console.error('❌ Frontend rebuild failed');
+        console.error('❌ Build failed')
       }
-    });
-    
-    return { success: true };
+      
+      // Очищаем список измененных файлов
+      changedFiles.clear()
+    })
   } catch (error) {
-    console.error('❌ Rebuild error:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Rebuild error:', error)
+    changedFiles.clear()
   }
-});
-
-app.whenReady().then(() => {
-  createWindow()
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
-
-// File watcher для автоматического rebuild после изменений AI
-let rebuildInProgress = false;
-let rebuildTimeout: NodeJS.Timeout | null = null;
-
-function startFileWatcher() {
-  const watchPaths = [
-    'app/**/*.tsx',
-    'app/**/*.ts', 
-    'app/**/*.jsx',
-    'app/**/*.js',
-    'components/**/*.tsx',
-    'components/**/*.ts',
-    'lib/**/*.ts',
-    'lib/**/*.js'
-  ];
-  
-  const watcher = chokidar.watch(watchPaths, {
-    ignored: [
-      'node_modules/**',
-      'dist/**',
-      'dist-electron/**',
-      '.git/**',
-      '**/*.map'
-    ],
-    persistent: true,
-    ignoreInitial: true
-  });
-  
-  watcher.on('change', (filePath) => {
-    if (rebuildInProgress) return;
-    
-    console.log(`📝 File changed: ${filePath}`);
-    
-    // Debounce: ждем 500ms после последнего изменения
-    if (rebuildTimeout) {
-      clearTimeout(rebuildTimeout);
-    }
-    
-    rebuildTimeout = setTimeout(() => {
-      autoRebuild();
-    }, 500);
-  });
-  
-  console.log('👁️  File watcher started for:', watchPaths);
-}
-
-function autoRebuild() {
-  if (rebuildInProgress || !mainWindow) return;
-  
-  rebuildInProgress = true;
-  console.log('🔄 Auto-rebuilding...');
-  
-  const { spawn } = require('child_process');
-  const buildVite = spawn('npm', ['run', 'build:vite'], { 
-    stdio: 'inherit',
-    shell: true 
-  });
-  
-  buildVite.on('close', (code) => {
-    rebuildInProgress = false;
-    
-    if (code === 0) {
-      console.log('✅ Auto-rebuild successful, reloading...');
-      if (mainWindow) {
-        mainWindow.reload();
-      }
-    } else {
-      console.error('❌ Auto-rebuild failed');
-    }
-  });
-  
-  buildVite.on('error', (error) => {
-    rebuildInProgress = false;
-    console.error('❌ Auto-rebuild error:', error);
-  });
-}
-
-// Запускаем file watcher всегда (так как мы в режиме self-modifying editor)
-app.whenReady().then(() => {
-  setTimeout(startFileWatcher, 2000); // Задержка для полной инициализации
-}); 
+} 

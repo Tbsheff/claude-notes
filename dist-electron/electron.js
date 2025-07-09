@@ -1,8 +1,40 @@
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 require('dotenv').config({ path: '.env.local' });
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const chokidar = require('chokidar');
-const { AIAgent } = require('./lib/ai-agent.js');
 let mainWindow = null;
 let aiAgent = null;
 function createWindow() {
@@ -31,18 +63,37 @@ function createWindow() {
         });
     }
 }
+app.whenReady().then(() => {
+    createWindow();
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
+});
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
 ipcMain.handle('ai:initialize', async (event, config = {}) => {
     try {
-        const apiKey = process.env.OPENROUTER_API_KEY || config.apiKey;
+        const apiKey = process.env.ANTHROPIC_API_KEY || config.apiKey;
         if (!apiKey) {
-            const error = 'OpenRouter API key not found in environment variables or config';
+            const error = 'Anthropic API key not found in environment variables or config';
             throw new Error(error);
         }
-        aiAgent = new AIAgent({
-            openRouterApiKey: apiKey,
-            model: config.model || 'anthropic/claude-sonnet-4',
-            projectRoot: path.join(__dirname, '..')
+        const { ClaudeCodeAgent } = await Promise.resolve().then(() => __importStar(require('./lib/ai/agent/core')));
+        aiAgent = new ClaudeCodeAgent({
+            apiKey,
+            maxTurns: 50,
+            cwd: path.join(__dirname, '..'),
+            allowedTools: [
+                'Read', 'Write', 'Edit', 'Bash', 'List', 'Search', 'Find'
+            ],
+            permissionMode: 'acceptEdits'
         });
+        await aiAgent.initialize();
         return { success: true };
     }
     catch (error) {
@@ -50,17 +101,47 @@ ipcMain.handle('ai:initialize', async (event, config = {}) => {
     }
 });
 ipcMain.handle('ai:process-request', async (event, message) => {
-    if (!aiAgent) {
-        const error = 'AI Agent not initialized';
-        return { success: false, error };
-    }
     try {
-        const response = await aiAgent.processRequest(message);
-        return { success: true, response };
+        if (!aiAgent) {
+            throw new Error('AI Agent not initialized');
+        }
+        // Отмечаем что Claude начинает работу
+        claudeIsWorking = true;
+        console.log('🚀 Claude Code: Starting work...');
+        const result = await aiAgent.processRequest(message);
+        // Отмечаем что Claude закончил работу
+        claudeIsWorking = false;
+        console.log('✅ Claude Code: Work completed');
+        // Запускаем пересборку если были изменения
+        if (changedFiles.size > 0) {
+            setTimeout(() => rebuildAfterClaudeFinished(), 500); // Небольшая задержка для завершения записи файлов
+        }
+        return result;
+    }
+    catch (error) {
+        claudeIsWorking = false;
+        console.log('❌ Claude Code: Work failed');
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+});
+ipcMain.handle('app:reloadWindow', async () => {
+    if (mainWindow) {
+        mainWindow.reload();
+    }
+});
+ipcMain.handle('app:rebuildAndReload', async () => {
+    try {
+        console.log('🔄 Manual rebuild requested...');
+        // Не нужно ничего делать - file watcher автоматически обнаружит изменения и пересоберет
+        // Просто сообщаем что все ок
+        return { success: true, message: 'Auto-rebuild will trigger when files change' };
     }
     catch (error) {
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
+});
+ipcMain.handle('app:getVersion', async () => {
+    return app.getVersion();
 });
 ipcMain.handle('dialog:openFile', async () => {
     const { dialog } = require('electron');
@@ -71,9 +152,10 @@ ipcMain.handle('dialog:openFile', async () => {
             { name: 'All Files', extensions: ['*'] }
         ]
     });
-    if (!result.canceled && result.filePaths.length > 0) {
+    if (!result.canceled) {
         const fs = require('fs');
-        return fs.readFileSync(result.filePaths[0], 'utf-8');
+        const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+        return content;
     }
     return undefined;
 });
@@ -85,128 +167,76 @@ ipcMain.handle('dialog:saveFile', async (event, content) => {
             { name: 'All Files', extensions: ['*'] }
         ]
     });
-    if (!result.canceled && result.filePath) {
+    if (!result.canceled) {
         const fs = require('fs');
         fs.writeFileSync(result.filePath, content);
         return true;
     }
     return false;
 });
-ipcMain.handle('app:getVersion', async () => {
-    return app.getVersion();
+// File watcher всегда активен для auto-reload после AI изменений
+let changedFiles = new Set();
+let claudeIsWorking = false;
+const watcher = chokidar.watch([
+    'app',
+    'components',
+    'lib',
+    'styles',
+    'main.tsx',
+    'index.html'
+], {
+    ignored: /node_modules/,
+    persistent: true,
+    usePolling: true,
+    interval: 1000,
+    ignoreInitial: true
 });
-ipcMain.handle('app:reloadWindow', async () => {
-    if (mainWindow) {
-        mainWindow.reload();
-    }
+watcher.on('ready', () => {
+    console.log('🔍 File watcher is ready and watching for changes...');
 });
-ipcMain.handle('app:rebuildAndReload', async () => {
+watcher.on('change', (filePath) => {
+    console.log(`📁 File changed: ${filePath}`);
+    changedFiles.add(filePath);
+    // Не пересобираем сразу, ждем когда Claude закончит
+});
+watcher.on('add', (filePath) => {
+    console.log(`➕ File added: ${filePath}`);
+});
+watcher.on('unlink', (filePath) => {
+    console.log(`➖ File removed: ${filePath}`);
+});
+watcher.on('error', (error) => {
+    console.error('❌ File watcher error:', error);
+});
+// Функция для пересборки после завершения работы Claude
+async function rebuildAfterClaudeFinished() {
+    if (changedFiles.size === 0)
+        return;
+    console.log(`🔄 Auto-rebuilding after ${changedFiles.size} file changes...`);
+    console.log('📝 Changed files:', Array.from(changedFiles).join(', '));
     try {
-        console.log('🔄 Rebuilding application...');
-        // Rebuild только frontend
+        // Rebuild both frontend and electron
         const { spawn } = require('child_process');
-        const buildVite = spawn('npm', ['run', 'build:vite'], {
+        const buildProcess = spawn('npm', ['run', 'build'], {
             stdio: 'inherit',
             shell: true
         });
-        buildVite.on('close', (code) => {
+        buildProcess.on('close', (code) => {
             if (code === 0) {
-                console.log('✅ Frontend rebuilt successfully');
+                console.log('✅ Both frontend and electron rebuilt, reloading...');
                 if (mainWindow) {
                     mainWindow.reload();
                 }
             }
             else {
-                console.error('❌ Frontend rebuild failed');
+                console.error('❌ Build failed');
             }
+            // Очищаем список измененных файлов
+            changedFiles.clear();
         });
-        return { success: true };
     }
     catch (error) {
         console.error('❌ Rebuild error:', error);
-        return { success: false, error: error.message };
+        changedFiles.clear();
     }
-});
-app.whenReady().then(() => {
-    createWindow();
-});
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
-});
-// File watcher для автоматического rebuild после изменений AI
-let rebuildInProgress = false;
-let rebuildTimeout = null;
-function startFileWatcher() {
-    const watchPaths = [
-        'app/**/*.tsx',
-        'app/**/*.ts',
-        'app/**/*.jsx',
-        'app/**/*.js',
-        'components/**/*.tsx',
-        'components/**/*.ts',
-        'lib/**/*.ts',
-        'lib/**/*.js'
-    ];
-    const watcher = chokidar.watch(watchPaths, {
-        ignored: [
-            'node_modules/**',
-            'dist/**',
-            'dist-electron/**',
-            '.git/**',
-            '**/*.map'
-        ],
-        persistent: true,
-        ignoreInitial: true
-    });
-    watcher.on('change', (filePath) => {
-        if (rebuildInProgress)
-            return;
-        console.log(`📝 File changed: ${filePath}`);
-        // Debounce: ждем 500ms после последнего изменения
-        if (rebuildTimeout) {
-            clearTimeout(rebuildTimeout);
-        }
-        rebuildTimeout = setTimeout(() => {
-            autoRebuild();
-        }, 500);
-    });
-    console.log('👁️  File watcher started for:', watchPaths);
 }
-function autoRebuild() {
-    if (rebuildInProgress || !mainWindow)
-        return;
-    rebuildInProgress = true;
-    console.log('🔄 Auto-rebuilding...');
-    const { spawn } = require('child_process');
-    const buildVite = spawn('npm', ['run', 'build:vite'], {
-        stdio: 'inherit',
-        shell: true
-    });
-    buildVite.on('close', (code) => {
-        rebuildInProgress = false;
-        if (code === 0) {
-            console.log('✅ Auto-rebuild successful, reloading...');
-            if (mainWindow) {
-                mainWindow.reload();
-            }
-        }
-        else {
-            console.error('❌ Auto-rebuild failed');
-        }
-    });
-    buildVite.on('error', (error) => {
-        rebuildInProgress = false;
-        console.error('❌ Auto-rebuild error:', error);
-    });
-}
-// Запускаем file watcher всегда (так как мы в режиме self-modifying editor)
-app.whenReady().then(() => {
-    setTimeout(startFileWatcher, 2000); // Задержка для полной инициализации
-});

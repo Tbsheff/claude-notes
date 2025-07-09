@@ -3,7 +3,7 @@ export interface ElectronAPI {
   saveFile: (content: string) => Promise<boolean>;
   getVersion: () => Promise<string>;
   ai: {
-    initialize: (config?: { apiKey?: string, model?: string }) => Promise<{ success: boolean, error?: string }>;
+    initialize: (config?: { apiKey?: string }) => Promise<{ success: boolean, error?: string }>;
     processRequest: (message: string) => Promise<{ success: boolean, response?: string, error?: string }>;
   };
   app: {
