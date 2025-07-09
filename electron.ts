@@ -60,7 +60,7 @@ ipcMain.handle('ai:initialize', async (event, config = {}) => {
       const error = 'Anthropic API key not found in environment variables or config'
       throw new Error(error)
     }
-
+    
     const { ClaudeCodeAgent } = await import('./lib/ai/agent/core')
     
     aiAgent = new ClaudeCodeAgent({
@@ -83,7 +83,7 @@ ipcMain.handle('ai:initialize', async (event, config = {}) => {
 
 ipcMain.handle('ai:process-request', async (event, message) => {
   try {
-    if (!aiAgent) {
+  if (!aiAgent) {
       throw new Error('AI Agent not initialized')
     }
 
@@ -233,7 +233,7 @@ async function rebuildAfterClaudeFinished() {
       } else {
         console.error('❌ Build failed')
       }
-      
+    
       // Очищаем список измененных файлов
       changedFiles.clear()
     })
