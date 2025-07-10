@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         initialize: (config) => ipcRenderer.invoke('ai:initialize', config),
         processRequest: (message) => ipcRenderer.invoke('ai:process-request', message)
     },
+    llmCall: (messages, model) => ipcRenderer.invoke('llm:call', messages, model),
     app: {
         reloadWindow: () => ipcRenderer.invoke('app:reloadWindow'),
         rebuildAndReload: () => ipcRenderer.invoke('app:rebuildAndReload')

@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { NoteEditorHeader } from './note-editor-header'
 import { NoteEditorFooter } from './note-editor-footer'
 import { SelectionToolbar } from './selection-toolbar'
+import { useFocusMode } from '../features/context-features/focus-mode'
 
 export function NoteEditor() {
   const [content, setContent] = useState('')
@@ -9,7 +11,10 @@ export function NoteEditor() {
   const [buildStatus, setBuildStatus] = useState('Building...')
   const [aiInitialized, setAiInitialized] = useState(false)
   const [createdAt] = useState(new Date())
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  const focusMode = useFocusMode()
 
   useEffect(() => {
     const initializeAI = async () => {
@@ -80,33 +85,40 @@ export function NoteEditor() {
   }
 
   return (
-    <div className="w-full h-screen max-h-screen flex flex-col bg-white">
-      <NoteEditorHeader 
-        createdAt={createdAt}
-        isBuilding={isBuilding}
-        buildStatus={buildStatus}
-        content={content}
-      />
+    <div className="w-full h-screen max-h-screen flex flex-col bg-background">
+      {!focusMode.state.isActive && (
+        <NoteEditorHeader 
+          createdAt={createdAt}
+          isBuilding={isBuilding}
+          buildStatus={buildStatus}
+          content={content}
+        />
+      )}
 
-      <div className="flex-1 px-6 py-6 bg-white relative overflow-auto min-h-0">
+      <div className="flex-1 bg-background relative">
+        <textarea
+          ref={textareaRef}
+          placeholder="Start writing..."
+          value={content}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
+          className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed placeholder:text-muted-foreground"
+          style={{ fontFamily: 'Manrope, sans-serif' }}
+          spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+        />
+        
         <SelectionToolbar
           content={content}
           setContent={setContent}
           textareaRef={textareaRef}
           onBuild={handleBuild}
-        >
-          <textarea
-            ref={textareaRef}
-            placeholder="Start writing your note..."
-            value={content}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-            className="w-full h-full resize-none border-none shadow-none p-0 bg-white focus:outline-none text-base leading-relaxed"
-          />
-        </SelectionToolbar>
+        />
       </div>
 
       <div className="flex-shrink-0">
-        <NoteEditorFooter characterCount={content.length} wordCount={countWords(content)} />
+        <NoteEditorFooter content={content} />
       </div>
     </div>
   )

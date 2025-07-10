@@ -6,6 +6,7 @@ export interface ElectronAPI {
     initialize: (config?: { apiKey?: string }) => Promise<{ success: boolean, error?: string }>;
     processRequest: (message: string) => Promise<{ success: boolean, response?: string, error?: string }>;
   };
+  llmCall: (messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }>, model?: string) => Promise<{ success: boolean, content?: string, error?: string }>;
   app: {
     reloadWindow: () => Promise<void>;
     rebuildAndReload: () => Promise<{ success: boolean; error?: string }>;

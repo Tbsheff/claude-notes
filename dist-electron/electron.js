@@ -105,16 +105,13 @@ ipcMain.handle('ai:process-request', async (event, message) => {
         if (!aiAgent) {
             throw new Error('AI Agent not initialized');
         }
-        // Отмечаем что Claude начинает работу
         claudeIsWorking = true;
         console.log('🚀 Claude Code: Starting work...');
         const result = await aiAgent.processRequest(message);
-        // Отмечаем что Claude закончил работу
         claudeIsWorking = false;
         console.log('✅ Claude Code: Work completed');
-        // Запускаем пересборку если были изменения
         if (changedFiles.size > 0) {
-            setTimeout(() => rebuildAfterClaudeFinished(), 500); // Небольшая задержка для завершения записи файлов
+            setTimeout(() => rebuildAfterClaudeFinished(), 500);
         }
         return result;
     }
@@ -122,6 +119,18 @@ ipcMain.handle('ai:process-request', async (event, message) => {
         claudeIsWorking = false;
         console.log('❌ Claude Code: Work failed');
         return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+});
+ipcMain.handle('llm:call', async (event, messages, model) => {
+    try {
+        const { llmCall } = await Promise.resolve().then(() => __importStar(require('./lib/ai/core')));
+        return await llmCall(messages, model);
+    }
+    catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        };
     }
 });
 ipcMain.handle('app:reloadWindow', async () => {
@@ -132,8 +141,6 @@ ipcMain.handle('app:reloadWindow', async () => {
 ipcMain.handle('app:rebuildAndReload', async () => {
     try {
         console.log('🔄 Manual rebuild requested...');
-        // Не нужно ничего делать - file watcher автоматически обнаружит изменения и пересоберет
-        // Просто сообщаем что все ок
         return { success: true, message: 'Auto-rebuild will trigger when files change' };
     }
     catch (error) {
@@ -174,7 +181,6 @@ ipcMain.handle('dialog:saveFile', async (event, content) => {
     }
     return false;
 });
-// File watcher всегда активен для auto-reload после AI изменений
 let changedFiles = new Set();
 let claudeIsWorking = false;
 const watcher = chokidar.watch([
