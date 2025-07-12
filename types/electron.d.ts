@@ -1,3 +1,11 @@
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ElectronAPI {
   openFile: () => Promise<string | undefined>;
   saveFile: (content: string) => Promise<boolean>;
@@ -7,6 +15,17 @@ export interface ElectronAPI {
     processRequest: (message: string) => Promise<{ success: boolean, response?: string, error?: string, changedFiles?: string[] }>;
   };
   llmCall: (messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }>, model?: string) => Promise<{ success: boolean, content?: string, error?: string }>;
+  notes: {
+    create: (title?: string, content?: string) => Promise<{ success: boolean, note?: Note, error?: string }>;
+    save: (noteId: string, content: string, title?: string) => Promise<{ success: boolean, note?: Note, error?: string }>;
+    load: (noteId: string) => Promise<{ success: boolean, note?: Note, error?: string }>;
+    list: () => Promise<{ success: boolean, notes?: Note[], error?: string }>;
+    delete: (noteId: string) => Promise<{ success: boolean, error?: string }>;
+  };
+  settings: {
+    save: (settings: any) => Promise<{ success: boolean, error?: string }>;
+    load: () => Promise<{ success: boolean, settings?: any, error?: string }>;
+  };
   app: {
     reloadWindow: () => Promise<void>;
     rebuildAndReload: () => Promise<{ success: boolean; error?: string }>;

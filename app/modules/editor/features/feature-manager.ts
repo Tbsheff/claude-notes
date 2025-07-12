@@ -9,6 +9,32 @@ class FeatureManager {
   private initialized = false
 
   constructor() {
+    this.loadSettings()
+  }
+
+  private async loadSettings() {
+    try {
+      const { editorApi } = await import('../api')
+      const result = await editorApi.loadSettings()
+      if (result.success && result.data) {
+        this.state = { ...this.state, ...result.data.features }
+      }
+    } catch (error) {
+      console.warn('Failed to load feature settings:', error)
+    }
+    this.initialize()
+  }
+
+  private async saveSettings() {
+    try {
+      const { editorApi } = await import('../api')
+      await editorApi.saveSettings({
+        features: this.state,
+        lastOpenedNote: undefined
+      })
+    } catch (error) {
+      console.warn('Failed to save feature settings:', error)
+    }
   }
 
   private initialize() {
@@ -17,7 +43,9 @@ class FeatureManager {
     try {
       const features = getAllFeatures()
       features.forEach(feature => {
-        this.state[feature.key] = feature.enabled
+        if (this.state[feature.key] === undefined) {
+          this.state[feature.key] = feature.enabled
+        }
       })
       this.initialized = true
     } catch {
@@ -35,6 +63,7 @@ class FeatureManager {
     if (this.state[key] !== enabled) {
       this.state[key] = enabled
       this.notifyListeners(key, enabled)
+      this.saveSettings()
     }
   }
 

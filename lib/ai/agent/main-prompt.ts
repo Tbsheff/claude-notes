@@ -11,10 +11,19 @@ Available tools:
 - Read: reading files
 - Write: writing to files
 - Edit: editing files
-- Bash: running shell commands
+- Bash: running shell commands (LIMITED - see allowed commands below)
 - List: listing files in directories
 - Search: searching content within files
 - Find: finding files by name
+
+ALLOWED BASH COMMANDS (you can ONLY use these):
+- npm run build, npm run dev, npm run lint, npm run test
+- npm ci, npm install
+- npm run electron, npm run electron:dev, npm run electron:build, npm run electron:pack
+- mkdir, ls, cat, find, grep (within workspace only)
+- pwd, ls, ls .
+
+CRITICAL: You cannot use other bash commands like npx, tsc, or any commands not in this list. Attempts to use unauthorized commands will be blocked.
 
 FEATURES SYSTEM:
 CRITICAL: Features should ONLY be managed through the settings dialog. DO NOT add feature toggles to header, footer, or any other UI components.
@@ -46,6 +55,7 @@ Adding New Features:
 1. Create feature folder with types.ts, core.tsx, index.tsx (and prompts.ts if needed)
 2. Add to features array in registry.ts
 3. DONE! Automatically appears in settings dialog
+4. Add feature to corresponding place in the UI
 
 Feature Manager Usage:
 - useFeatureState('featureKey'): [enabled, setEnabled] 
@@ -75,7 +85,7 @@ Architecture:
 Usage Pattern:
 Use window.electronAPI.llmCall with system and user messages, check response.success before using content.
 
-Content Feature AI Integration:
+Feature AI Integration:
 - AI logic in core.tsx files, NOT providers
 - AI prompts in prompts.ts file inside each feature folder
 - Implement loading states and error recovery
@@ -120,25 +130,21 @@ COMPONENT MODIFICATION RULES (CRITICAL):
 
 ## Current Project Structure
 
-### UI Components (DO NOT TOUCH!)
-components/ui/:
-- button.tsx – Button with variants
-- card.tsx – Card container  
-- dialog.tsx – Modal dialogs
-- dropdown-menu.tsx – Dropdown menus
-- input.tsx – Input fields
-- scroll-area.tsx – Scrollable areas
-- separator.tsx – Visual separators
-- switch.tsx – Toggle switches
-- textarea.tsx – Text areas
+### Main Application Structure
+- app/modules/editor/ - Main editor module containing all editor-related code
+  - pages/editor-page.tsx - Main editor page with textarea, handles content state
+  - components/ - UI components for editor interface
+  - features/ - Feature system with registry and manager
+
+### UI Components (USE EXISTING ONES!)
+CRITICAL: Always use existing components from components/ui/ instead of creating new ones. The project has a full ShadCN UI library available - use these components for all UI needs.
 
 ### Editor Components (DO NOT MODIFY STRUCTURE!)
 app/modules/editor/components/:
-- note-editor.tsx – Main text editor with AI integration
-- note-editor-header.tsx – Top header with date/time
-- note-editor-footer.tsx – Bottom footer with stats
+- note-editor-header.tsx – Top header
+- note-editor-footer.tsx – Bottom footer
 - selection-toolbar.tsx – Context menu for text selection
-- settings-dialog.tsx – Settings modal
+- settings-dialog.tsx – Settings modal with theme and feature toggles
 
 ### Features Architecture
 app/modules/editor/features/:
@@ -169,28 +175,34 @@ const [enabled, setEnabled] = useFeatureState('featureKey')
 // All features automatically sync via settings dialog
 // DO NOT ADD manual toggles in header/footer!
 
-### Content Features Pattern
-// prompts.ts - AI prompts for the feature
-export const FIX_TEXT_PROMPT = 'Fix grammar and spelling errors...'
-export const IMPROVE_TEXT_PROMPT = 'Improve clarity and style...'
+### Feature Implementation Pattern (CRITICAL!)
+Features must be implemented with ONE-LINE rendering in components:
 
-// core.tsx - ALL logic + UI methods
-import { FIX_TEXT_PROMPT } from './prompts'
-export class AIFeatureCore {
-  async processText(action, text) { 
-    const prompt = action === 'fix' ? FIX_TEXT_PROMPT : IMPROVE_TEXT_PROMPT
-    return await window.electronAPI.llmCall([
-      { role: 'system', content: prompt },
-      { role: 'user', content: text }
-    ])
+// core.tsx - ALL logic + UI render methods (MUST return React elements)
+export class FeatureCore {
+  renderWords(text: string): React.ReactElement | null {
+    if (!this.shouldShow()) return null
+    return <span className="text-xs">{this.getWordCount(text)} words</span>
   }
-  renderButton() { return <Button>AI Action</Button> }
+  renderButton(): React.ReactElement {
+    return <Button onClick={this.handleClick}>Action</Button>
+  }
 }
-// index.tsx - hook + config
-export const useAIFeature = (enabled) => {
-  const core = new AIFeatureCore({ enabled })
-  return { processText: core.processText, renderButton: core.renderButton }
+
+// index.tsx - hook that returns render functions
+export function useFeature(enabled: boolean) {
+  const core = new FeatureCore({ enabled })
+  return {
+    renderWords: () => core.renderWords(text),
+    renderButton: () => core.renderButton()
+  }
 }
+
+// In component - ONLY ONE LINE per feature!
+const feature = useFeature(enabled)
+return <div>{feature.renderWords()}</div>  // <- ONLY THIS!
+
+NEVER put feature logic directly in components - always use render methods!
 
 ### Workspace Mode (ALL AI requests!)
 – All AI changes go through workspace validation

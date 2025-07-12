@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NoteEditorHeader } from '../components/note-editor-header'
 import { NoteEditorFooter } from '../components/note-editor-footer'
 import { SelectionToolbar } from '../components/selection-toolbar'
+import { editorApi } from '../api'
+import { Note } from '@/types/electron'
 
 export function EditorPage() {
   const [content, setContent] = useState('')
   const [isBuilding, setIsBuilding] = useState(false)
   const [buildStatus, setBuildStatus] = useState('Building...')
   const [aiInitialized, setAiInitialized] = useState(false)
+  const [currentNote, setCurrentNote] = useState<Note | null>(null)
   const [createdAt] = useState(new Date())
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -31,8 +34,50 @@ export function EditorPage() {
       }
     }
 
+    const loadOrCreateNote = async () => {
+      try {
+        const notesResult = await editorApi.listNotes()
+        if (notesResult.success && notesResult.data && notesResult.data.length > 0) {
+          const latestNote = notesResult.data[0]
+          setCurrentNote(latestNote)
+          setContent(latestNote.content)
+        } else {
+          const createResult = await editorApi.createNote({ title: 'New Note', content: '' })
+          if (createResult.success && createResult.data) {
+            setCurrentNote(createResult.data)
+            setContent(createResult.data.content)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load note:', error)
+      }
+    }
+
     initializeAI()
+    loadOrCreateNote()
   }, [])
+
+  useEffect(() => {
+    if (!currentNote || !content.trim()) return
+
+    const saveNote = async () => {
+      try {
+        const result = await editorApi.saveNote({
+          noteId: currentNote.id,
+          content: content,
+          title: currentNote.title
+        })
+        if (result.success && result.data) {
+          setCurrentNote(result.data)
+        }
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    }
+
+    const timer = setTimeout(saveNote, 3000)
+    return () => clearTimeout(timer)
+  }, [content, currentNote])
 
   const handleBuild = async () => {
     if (!textareaRef.current || !aiInitialized) return
