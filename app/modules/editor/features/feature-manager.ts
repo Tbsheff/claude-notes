@@ -20,7 +20,7 @@ class FeatureManager {
         this.state[feature.key] = feature.enabled
       })
       this.initialized = true
-    } catch (error) {
+    } catch {
       console.warn('Feature manager initialization delayed due to circular import')
     }
   }

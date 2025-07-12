@@ -1,7 +1,7 @@
 import React from 'react'
 import { Wrench, Sparkles, Loader2 } from 'lucide-react'
 import { AITextEditorConfig, AITextEditorState, AITextEditorResult } from './types'
-import { FIX_TEXT_PROMPT, IMPROVE_TEXT_PROMPT } from '@/lib/ai/prompts/text-editing-prompts'
+import { FIX_TEXT_PROMPT, IMPROVE_TEXT_PROMPT } from './prompts'
 
 export class AITextEditorCore {
   private config: AITextEditorConfig

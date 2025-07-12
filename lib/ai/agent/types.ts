@@ -11,6 +11,30 @@ export interface AgentConfig {
   permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan'
   customSystemPrompt?: string
   appendSystemPrompt?: string
+  workspaceConfig?: WorkspaceConfig
+}
+
+export interface WorkspaceConfig {
+  enabled: boolean
+  workspaceDir: string
+  blacklistedPaths: string[]
+  timeoutMs?: number
+  validateAfter?: boolean
+}
+
+export interface WorkspaceResult {
+  success: boolean
+  workspacePath?: string
+  error?: string
+  validationResult?: ValidationResult
+}
+
+export interface ValidationResult {
+  success: boolean
+  tsCheck?: boolean
+  eslintCheck?: boolean
+  buildCheck?: boolean
+  error?: string
 }
 
 export interface AgentResponse {
@@ -32,4 +56,11 @@ export interface AgentRequest {
   }
 }
 
-export type QueryFunction = (props: AgentRequest) => AsyncGenerator<SDKMessage> 
+export type QueryFunction = (props: AgentRequest) => AsyncGenerator<SDKMessage>
+
+export interface ClaudeEvent {
+  type: 'assistant_message' | 'tool_action' | 'start' | 'complete' | 'error'
+  message: string
+  icon?: string
+  timestamp: number
+} 

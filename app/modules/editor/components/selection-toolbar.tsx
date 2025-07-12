@@ -1,6 +1,6 @@
 import React from 'react'
 import { Zap, Bold, Italic, Underline, Copy, Scissors, Sparkles, Wrench, Loader2 } from 'lucide-react'
-import { FIX_TEXT_PROMPT, IMPROVE_TEXT_PROMPT } from '@/lib/ai/prompts/text-editing-prompts'
+import { useAITextEditor } from '../features/ai-text-editor'
 
 interface SelectionToolbarProps {
   children?: React.ReactNode
@@ -16,6 +16,7 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
   const [loading, setLoading] = React.useState(false)
   const [loadingAction, setLoadingAction] = React.useState<'fix' | 'improve' | null>(null)
+  const aiTextEditor = useAITextEditor(true)
 
   React.useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -104,12 +105,7 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
     setLoadingAction(action)
     
     try {
-      const systemPrompt = action === 'fix' ? FIX_TEXT_PROMPT : IMPROVE_TEXT_PROMPT
-      
-      const result = await window.electronAPI.llmCall([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: selectedText }
-      ])
+      const result = await aiTextEditor.processText(action, selectedText)
 
       if (result.success && result.content) {
         const newContent = content.substring(0, start) + result.content.trim() + content.substring(end)

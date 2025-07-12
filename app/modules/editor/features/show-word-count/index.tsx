@@ -1,6 +1,5 @@
 import { ShowWordCountCore } from './core'
 import { ShowWordCountConfig } from './types'
-import { useFocusMode } from '../../context-features/focus-mode'
 
 export const showWordCountFeature = {
   config: {

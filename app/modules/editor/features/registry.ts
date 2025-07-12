@@ -1,9 +1,5 @@
-import { showWordCountFeature } from './element-features/show-word-count/index'
-import { characterCountFeature } from './element-features/character-count/index'
-import { calorieCalculatorFeature } from './element-features/calorie-calculator/index'
-import { focusModeFeature } from './context-features/focus-mode'
-import { aiTextEditorFeature } from './content-features/ai-text-editor/index'
-import { textReviewerFeature } from './content-features/text-reviewer/index'
+import { showWordCountFeature } from './show-word-count/index'
+import { aiTextEditorFeature } from './ai-text-editor/index'
 
 export interface FeatureConfig {
   key: string
@@ -15,11 +11,7 @@ export interface FeatureConfig {
 
 export const features = [
   showWordCountFeature,
-  characterCountFeature,
-  calorieCalculatorFeature,
-  focusModeFeature,
   aiTextEditorFeature,
-  textReviewerFeature
 ]
 
 export const getFeatureByKey = (key: string) => {

@@ -16,6 +16,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    rollupOptions: {
+      maxParallelFileOps: 100
+    }
+  },
+  optimizeDeps: {
+    disabled: true
   }
 }); 

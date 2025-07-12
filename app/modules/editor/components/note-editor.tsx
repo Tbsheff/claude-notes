@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown'
 import { NoteEditorHeader } from './note-editor-header'
 import { NoteEditorFooter } from './note-editor-footer'
 import { SelectionToolbar } from './selection-toolbar'
-import { useFocusMode } from '../features/context-features/focus-mode'
 
 export function NoteEditor() {
   const [content, setContent] = useState('')
@@ -13,8 +12,6 @@ export function NoteEditor() {
   const [createdAt] = useState(new Date())
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  
-  const focusMode = useFocusMode()
 
   useEffect(() => {
     const initializeAI = async () => {
@@ -38,11 +35,6 @@ export function NoteEditor() {
     initializeAI()
   }, [])
 
-  const countWords = (text: string): number => {
-    if (!text.trim()) return 0
-    return text.trim().split(/\s+/).length
-  }
-
   const handleBuild = async () => {
     if (!textareaRef.current || !aiInitialized) return
     
@@ -63,11 +55,14 @@ export function NoteEditor() {
     setBuildStatus('Building...')
 
     try {
-      const result = await window.electronAPI.ai.processRequest(selectedText)
+      const result = await window.electronAPI.ai.processRequestWorkspace(selectedText)
       
       if (result.success) {
         console.log('AI Response:', result.response)
-        setBuildStatus('Reloading...')
+        if (result.changedFiles && result.changedFiles.length > 0) {
+          console.log('Changed files:', result.changedFiles)
+        }
+        setBuildStatus('Workspace validated, reloading...')
         
         setTimeout(() => {
           setIsBuilding(false)
@@ -86,14 +81,12 @@ export function NoteEditor() {
 
   return (
     <div className="w-full h-screen max-h-screen flex flex-col bg-background">
-      {!focusMode.state.isActive && (
-        <NoteEditorHeader 
-          createdAt={createdAt}
-          isBuilding={isBuilding}
-          buildStatus={buildStatus}
-          content={content}
-        />
-      )}
+      <NoteEditorHeader 
+        createdAt={createdAt}
+        isBuilding={isBuilding}
+        buildStatus={buildStatus}
+        content={content}
+      />
 
       <div className="flex-1 bg-background relative">
         <textarea
