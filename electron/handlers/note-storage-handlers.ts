@@ -1,37 +1,16 @@
-const { ipcMain, app } = require('electron')
+const { ipcMain } = require('electron')
 const fs = require('fs')
 const path = require('path')
 import { Note } from '../../types/electron'
-
-function getNotesDir(): string {
-  const documentsPath = app.getPath('documents')
-  const notesDir = path.join(documentsPath, 'AIEditor', 'notes')
-  
-  if (!fs.existsSync(notesDir)) {
-    fs.mkdirSync(notesDir, { recursive: true })
-  }
-  
-  return notesDir
-}
-
-function getSettingsPath(): string {
-  const documentsPath = app.getPath('documents')
-  const settingsDir = path.join(documentsPath, 'AIEditor')
-  
-  if (!fs.existsSync(settingsDir)) {
-    fs.mkdirSync(settingsDir, { recursive: true })
-  }
-  
-  return path.join(settingsDir, 'settings.json')
-}
-
-function generateNoteId(): string {
-  return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9)
-}
-
-function getNotePath(noteId: string): string {
-  return path.join(getNotesDir(), `${noteId}.json`)
-}
+import {
+  generateNoteId,
+  getNotePath,
+  createMarkdown,
+  createNoteFromMarkdown,
+  loadIndex,
+  saveIndex,
+  getSettingsPath
+} from '../utils/notes-helpers'
 
 export function setupNoteStorageHandlers() {
   ipcMain.handle('notes:create', async (event, title?: string, content?: string) => {
@@ -48,7 +27,13 @@ export function setupNoteStorageHandlers() {
       }
       
       const notePath = getNotePath(noteId)
-      fs.writeFileSync(notePath, JSON.stringify(note, null, 2))
+      const markdownContent = createMarkdown(note)
+      fs.writeFileSync(notePath, markdownContent)
+      
+      const index = loadIndex()
+      index.notes.push(note)
+      index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      saveIndex(index)
       
       return { success: true, note }
     } catch (error) {
@@ -64,16 +49,28 @@ export function setupNoteStorageHandlers() {
         return { success: false, error: 'Note not found' }
       }
       
-      const existingNote = JSON.parse(fs.readFileSync(notePath, 'utf-8'))
+      const existingMarkdown = fs.readFileSync(notePath, 'utf-8')
+      const existingNote = createNoteFromMarkdown(noteId, existingMarkdown)
       
       const updatedNote: Note = {
         ...existingNote,
-        content,
         title: title || existingNote.title,
+        content,
         updatedAt: new Date().toISOString()
       }
       
-      fs.writeFileSync(notePath, JSON.stringify(updatedNote, null, 2))
+      const markdownContent = createMarkdown(updatedNote)
+      fs.writeFileSync(notePath, markdownContent)
+      
+      const index = loadIndex()
+      const noteIndex = index.notes.findIndex(n => n.id === noteId)
+      if (noteIndex !== -1) {
+        index.notes[noteIndex] = updatedNote
+      } else {
+        index.notes.push(updatedNote)
+      }
+      index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      saveIndex(index)
       
       return { success: true, note: updatedNote }
     } catch (error) {
@@ -89,7 +86,8 @@ export function setupNoteStorageHandlers() {
         return { success: false, error: 'Note not found' }
       }
       
-      const note = JSON.parse(fs.readFileSync(notePath, 'utf-8'))
+      const markdownContent = fs.readFileSync(notePath, 'utf-8')
+      const note = createNoteFromMarkdown(noteId, markdownContent)
       
       return { success: true, note }
     } catch (error) {
@@ -99,26 +97,8 @@ export function setupNoteStorageHandlers() {
 
   ipcMain.handle('notes:list', async () => {
     try {
-      const notesDir = getNotesDir()
-      const files = fs.readdirSync(notesDir)
-      
-      const notes: Note[] = []
-      
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          try {
-            const filePath = path.join(notesDir, file)
-            const note = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-            notes.push(note)
-          } catch (error) {
-            console.warn(`Failed to read note file ${file}:`, error)
-          }
-        }
-      }
-      
-      notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      
-      return { success: true, notes }
+      const index = loadIndex()
+      return { success: true, notes: index.notes }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
@@ -133,6 +113,10 @@ export function setupNoteStorageHandlers() {
       }
       
       fs.unlinkSync(notePath)
+      
+      const index = loadIndex()
+      index.notes = index.notes.filter(n => n.id !== noteId)
+      saveIndex(index)
       
       return { success: true }
     } catch (error) {
@@ -164,4 +148,5 @@ export function setupNoteStorageHandlers() {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
+
 } 

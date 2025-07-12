@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './settings-dialog'
 import { AgentLogPopover } from '../../agent/components/agent-log-popover'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 
 interface NoteEditorHeaderProps {
   createdAt: Date
@@ -43,6 +44,7 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
   return (
     <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-background">
       <div className="flex items-center space-x-4">
+        <SidebarTrigger />
         <div className="flex items-center space-x-2">
           <span className="text-sm text-muted-foreground">
             {createdAt.toLocaleDateString('en-US', { 

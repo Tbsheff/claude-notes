@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NoteEditorHeader } from '../components/note-editor-header'
 import { NoteEditorFooter } from '../components/note-editor-footer'
 import { SelectionToolbar } from '../components/selection-toolbar'
+import { NotesSidebar } from '../components/note-sidebar'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { editorApi } from '../api'
 import { Note } from '@/types/electron'
 
@@ -14,6 +16,44 @@ export function EditorPage() {
   const [createdAt] = useState(new Date())
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const createNewNote = async (): Promise<void> => {
+    try {
+      const createResult = await editorApi.createNote({ title: 'New Note', content: '' })
+      if (createResult.success && createResult.data) {
+        setCurrentNote(createResult.data)
+        setContent(createResult.data.content)
+      }
+    } catch (error) {
+      console.error('Failed to create note:', error)
+      throw error
+    }
+  }
+
+  const handleNoteSelect = (note: Note) => {
+    setCurrentNote(note)
+    setContent(note.content)
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      const result = await editorApi.deleteNote(noteId)
+      if (result.success) {
+        if (currentNote?.id === noteId) {
+          const notesResult = await editorApi.listNotes()
+          if (notesResult.success && notesResult.data && notesResult.data.length > 0) {
+            const nextNote = notesResult.data[0]
+            setCurrentNote(nextNote)
+            setContent(nextNote.content)
+          } else {
+            await createNewNote()
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete note:', error)
+    }
+  }
 
   useEffect(() => {
     const initializeAI = async () => {
@@ -42,11 +82,7 @@ export function EditorPage() {
           setCurrentNote(latestNote)
           setContent(latestNote.content)
         } else {
-          const createResult = await editorApi.createNote({ title: 'New Note', content: '' })
-          if (createResult.success && createResult.data) {
-            setCurrentNote(createResult.data)
-            setContent(createResult.data.content)
-          }
+          await createNewNote()
         }
       } catch (error) {
         console.error('Failed to load note:', error)
@@ -124,39 +160,50 @@ export function EditorPage() {
   }
 
   return (
-    <div className="w-full h-screen max-h-screen flex flex-col bg-background">
-      <NoteEditorHeader 
-        createdAt={createdAt}
-        isBuilding={isBuilding}
-        buildStatus={buildStatus}
-        content={content}
-      />
-
-      <div className="flex-1 bg-background relative">
-        <textarea
-          ref={textareaRef}
-          placeholder="Start writing..."
-          value={content}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-          className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed placeholder:text-muted-foreground"
-          style={{ fontFamily: 'Manrope, sans-serif' }}
-          spellCheck={false}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
+    <SidebarProvider defaultOpen={false}>
+      <div className="w-full h-screen max-h-screen flex bg-background">
+        <NotesSidebar
+          currentNote={currentNote}
+          onNoteSelect={handleNoteSelect}
+          onCreateNote={createNewNote}
+          onDeleteNote={handleDeleteNote}
         />
         
-        <SelectionToolbar
-          content={content}
-          setContent={setContent}
-          textareaRef={textareaRef}
-          onBuild={handleBuild}
-        />
-      </div>
+        <SidebarInset className="flex flex-col">
+          <NoteEditorHeader 
+            createdAt={createdAt}
+            isBuilding={isBuilding}
+            buildStatus={buildStatus}
+            content={content}
+          />
 
-      <div className="flex-shrink-0">
-        <NoteEditorFooter content={content} />
+          <div className="flex-1 bg-background relative">
+            <textarea
+              ref={textareaRef}
+              placeholder="Start writing..."
+              value={content}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
+              className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed placeholder:text-muted-foreground"
+              style={{ fontFamily: 'Manrope, sans-serif' }}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+            />
+            
+            <SelectionToolbar
+              content={content}
+              setContent={setContent}
+              textareaRef={textareaRef}
+              onBuild={handleBuild}
+            />
+          </div>
+
+          <div className="flex-shrink-0">
+            <NoteEditorFooter content={content} />
+          </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   )
 } 
