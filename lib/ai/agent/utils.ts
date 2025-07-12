@@ -13,6 +13,8 @@ export class ClaudeCodeLogger {
     }
   }
   static logMessage(msg: SDKMessage): void {
+    console.log('🔍 Raw Message:', JSON.stringify(msg, null, 2))
+    
     if (msg.type === 'assistant' && msg.message?.content) {
       const content = Array.isArray(msg.message.content) 
         ? msg.message.content.find(c => c.type === 'text')?.text 
@@ -41,46 +43,80 @@ export class ClaudeCodeLogger {
         })
       }
     }
+
+    if (msg.type === 'user' && msg.message?.content) {
+      if (Array.isArray(msg.message.content)) {
+        msg.message.content.forEach((item: any) => {
+          if (item.type === 'tool_result') {
+            console.log('📤 Tool Result:', JSON.stringify(item, null, 2))
+            
+            // Определяем является ли это ошибкой
+            const content = item.content || ''
+            const isRealError = item.is_error && 
+              !content.includes('No files found') &&
+              !content.includes('File created successfully') &&
+              !content.includes('updated')
+            
+            this.emitEvent({
+              type: 'tool_result',
+              message: content,
+              icon: isRealError ? '❌' : '✅',
+              tool_use_id: item.tool_use_id,
+              is_error: isRealError
+            })
+          }
+        })
+      }
+    }
+
+    if (msg.type === 'user') {
+      console.log('👤 User Message:', JSON.stringify(msg, null, 2))
+    }
+
+    if (msg.type === 'system') {
+      console.log('🔧 System Message:', JSON.stringify(msg, null, 2))
+    }
   }
 
   static logToolFromContent(toolUse: any): void {
     const toolName = toolUse.name
     const toolInput = toolUse.input || {}
+    const toolUseId = toolUse.id
 
     switch (toolName) {
       case 'Read':
         const readPath = toolInput.path || toolInput.file || toolInput.filename || toolInput.file_path || 'unknown'
         const readMsg = `Read: ${readPath}`
         console.log(`📖 ${readMsg}`)
-        this.emitEvent({ type: 'tool_action', message: readMsg, icon: '📖' })
+        this.emitEvent({ type: 'tool_action', message: readMsg, icon: '📖', tool_use_id: toolUseId })
         break
         
       case 'Write':
         const writePath = toolInput.path || toolInput.file || toolInput.filename || toolInput.file_path || 'unknown'
         const writeMsg = `Write: ${writePath}`
         console.log(`📝 ${writeMsg}`)
-        this.emitEvent({ type: 'tool_action', message: writeMsg, icon: '📝' })
+        this.emitEvent({ type: 'tool_action', message: writeMsg, icon: '📝', tool_use_id: toolUseId })
         break
         
       case 'Edit':
         const editPath = toolInput.path || toolInput.file || toolInput.filename || toolInput.file_path || 'unknown'
         const editMsg = `Edit: ${editPath}`.length > 100 ? `Edit: ${editPath}`.substring(0, 100) + '...' : `Edit: ${editPath}`
         console.log(`✏️ ${editMsg}`)
-        this.emitEvent({ type: 'tool_action', message: editMsg, icon: '✏️' })
+        this.emitEvent({ type: 'tool_action', message: editMsg, icon: '✏️', tool_use_id: toolUseId })
         break
         
       case 'Bash':
         const command = toolInput.command || toolInput.cmd || toolInput.script || 'unknown command'
         const bashMsg = `Bash: ${command}`
         console.log(`⚡ ${bashMsg}`)
-        this.emitEvent({ type: 'tool_action', message: bashMsg, icon: '⚡' })
+        this.emitEvent({ type: 'tool_action', message: bashMsg, icon: '⚡', tool_use_id: toolUseId })
         break
         
       case 'List':
         const listPath = toolInput.path || toolInput.directory || toolInput.dir || '.'
         const listMsg = `List: ${listPath}`
         console.log(`📁 ${listMsg}`)
-        this.emitEvent({ type: 'tool_action', message: listMsg, icon: '📁' })
+        this.emitEvent({ type: 'tool_action', message: listMsg, icon: '📁', tool_use_id: toolUseId })
         break
         
       case 'Search':
@@ -88,7 +124,7 @@ export class ClaudeCodeLogger {
         const searchPath = toolInput.path || toolInput.directory || '.'
         const searchMsg = `Search: "${pattern}" in ${searchPath}`
         console.log(`🔍 ${searchMsg}`)
-        this.emitEvent({ type: 'tool_action', message: searchMsg, icon: '🔍' })
+        this.emitEvent({ type: 'tool_action', message: searchMsg, icon: '🔍', tool_use_id: toolUseId })
         break
         
       case 'Find':
@@ -96,14 +132,28 @@ export class ClaudeCodeLogger {
         const findPath = toolInput.path || toolInput.directory || '.'
         const findMsg = `Find: "${findPattern}" in ${findPath}`
         console.log(`🔎 ${findMsg}`)
-        this.emitEvent({ type: 'tool_action', message: findMsg, icon: '🔎' })
+        this.emitEvent({ type: 'tool_action', message: findMsg, icon: '🔎', tool_use_id: toolUseId })
+        break
+        
+      case 'LS':
+        const lsPath = toolInput.path || '.'
+        const lsMsg = `List: ${lsPath}`
+        console.log(`📁 ${lsMsg}`)
+        this.emitEvent({ type: 'tool_action', message: lsMsg, icon: '📁', tool_use_id: toolUseId })
+        break
+        
+      case 'Grep':
+        const grepPattern = toolInput.pattern || toolInput.query || 'unknown'
+        const grepMsg = `Grep: ${grepPattern}`
+        console.log(`🔍 ${grepMsg}`)
+        this.emitEvent({ type: 'tool_action', message: grepMsg, icon: '🔍', tool_use_id: toolUseId })
         break
         
       default:
         const inputStr = JSON.stringify(toolInput)
         const defaultMsg = inputStr && inputStr !== '{}' ? `${toolName}: ${inputStr}` : toolName
         console.log(`🔧 ${defaultMsg}`)
-        this.emitEvent({ type: 'tool_action', message: defaultMsg, icon: '🔧' })
+        this.emitEvent({ type: 'tool_action', message: defaultMsg, icon: '🔧', tool_use_id: toolUseId })
     }
   }
 

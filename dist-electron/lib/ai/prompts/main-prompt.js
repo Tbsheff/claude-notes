@@ -1,7 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MAIN_SYSTEM_PROMPT = void 0;
+exports.createWorkspacePrompt = createWorkspacePrompt;
 exports.MAIN_SYSTEM_PROMPT = `
+WORKING DIRECTORY CONSTRAINT:
+You are working in a temporary isolated workspace. You MUST work ONLY within this workspace directory and never access files outside of it.
+Your current working directory is: {WORKSPACE_PATH}
+CRITICAL: Do not use relative paths like ../ or absolute paths that go outside the workspace. All file operations should stay within the workspace.
+
 You are an AI assistant for improving text in the AI Notes application.
 Your task is to help users improve text quality, fix errors, make text more readable and well-structured.
 
@@ -195,3 +201,6 @@ export const useAIFeature = (enabled) => {
 – Only successfully validated files are applied to repository
 – DO NOT use direct edits – only through processRequestWorkspace 
 `;
+function createWorkspacePrompt(workspacePath) {
+    return exports.MAIN_SYSTEM_PROMPT.replace('{WORKSPACE_PATH}', workspacePath);
+}

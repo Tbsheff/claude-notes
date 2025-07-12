@@ -59,8 +59,10 @@ export interface AgentRequest {
 export type QueryFunction = (props: AgentRequest) => AsyncGenerator<SDKMessage>
 
 export interface ClaudeEvent {
-  type: 'assistant_message' | 'tool_action' | 'start' | 'complete' | 'error'
+  type: 'assistant_message' | 'tool_action' | 'tool_result' | 'start' | 'complete' | 'error'
   message: string
   icon?: string
   timestamp: number
+  tool_use_id?: string
+  is_error?: boolean
 } 

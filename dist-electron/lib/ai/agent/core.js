@@ -64,36 +64,30 @@ class ClaudeCodeAgent {
             if (!this.initialized) {
                 throw new Error('Agent not initialized. Call initialize() first.');
             }
-            utils_1.ClaudeCodeLogger.logStart();
             console.log('🚀 Starting workspace-isolated AI processing...');
             workspaceResult = await manager.create();
             if (!workspaceResult.success) {
                 throw new Error(`Failed to create workspace: ${workspaceResult.error}`);
             }
             console.log('📁 Workspace created at:', workspaceResult.workspacePath);
+            utils_1.ClaudeCodeLogger.logStart();
             const messages = [];
-            const originalDir = process.cwd();
-            process.chdir(workspaceResult.workspacePath);
-            try {
-                for await (const msg of (0, claude_code_1.query)({
-                    prompt,
-                    abortController: new AbortController(),
-                    options: {
-                        maxTurns: this.config.maxTurns || 50,
-                        cwd: workspaceResult.workspacePath,
-                        allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash'],
-                        disallowedTools: this.config.disallowedTools || [],
-                        permissionMode: this.config.permissionMode || 'acceptEdits',
-                        customSystemPrompt: this.config.customSystemPrompt || main_prompt_1.MAIN_SYSTEM_PROMPT,
-                        appendSystemPrompt: this.config.appendSystemPrompt
-                    }
-                })) {
-                    utils_1.ClaudeCodeLogger.logMessage(msg);
-                    messages.push(msg);
+            const workspacePrompt = (0, main_prompt_1.createWorkspacePrompt)(workspaceResult.workspacePath);
+            for await (const msg of (0, claude_code_1.query)({
+                prompt,
+                abortController: new AbortController(),
+                options: {
+                    maxTurns: this.config.maxTurns || 50,
+                    cwd: workspaceResult.workspacePath,
+                    allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash'],
+                    disallowedTools: this.config.disallowedTools || [],
+                    permissionMode: this.config.permissionMode || 'acceptEdits',
+                    customSystemPrompt: workspacePrompt,
+                    appendSystemPrompt: this.config.appendSystemPrompt
                 }
-            }
-            finally {
-                process.chdir(originalDir);
+            })) {
+                utils_1.ClaudeCodeLogger.logMessage(msg);
+                messages.push(msg);
             }
             if (workspaceConfig.validateAfter) {
                 console.log('🔍 Validating workspace changes...');

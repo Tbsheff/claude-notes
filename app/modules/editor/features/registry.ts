@@ -1,6 +1,5 @@
 import { showWordCountFeature } from './show-word-count/index'
 import { aiTextEditorFeature } from './ai-text-editor/index'
-
 export interface FeatureConfig {
   key: string
   name: string

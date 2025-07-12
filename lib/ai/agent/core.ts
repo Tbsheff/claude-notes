@@ -1,6 +1,6 @@
 import { query, type SDKMessage } from '@anthropic-ai/claude-code'
 import { AgentConfig, AgentResponse, WorkspaceConfig, WorkspaceResult } from './types'
-import { MAIN_SYSTEM_PROMPT } from '../prompts/main-prompt'
+import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from '../prompts/main-prompt'
 import { ClaudeCodeLogger } from './utils'
 import { WorkspaceManager } from '../workspace/manager'
 import { Validator } from '../workspace/validator'
@@ -39,7 +39,7 @@ export class ClaudeCodeAgent {
         options: {
           maxTurns: this.config.maxTurns || 50,
           cwd: this.config.cwd || process.cwd(),
-          allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash'],
+          allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash(npm run build)', 'Bash(npm run dev)', 'Bash(npm run lint)', 'Bash(npm run test)', 'Bash(npm ci)', 'Bash(npm install)', 'Bash(npm run electron)', 'Bash(npm run electron:dev)', 'Bash(npm run electron:build)', 'Bash(npm run electron:pack)'],
           disallowedTools: this.config.disallowedTools || [],
           permissionMode: this.config.permissionMode || 'acceptEdits',
           customSystemPrompt: this.config.customSystemPrompt || MAIN_SYSTEM_PROMPT,
@@ -79,7 +79,6 @@ export class ClaudeCodeAgent {
         throw new Error('Agent not initialized. Call initialize() first.')
       }
 
-      ClaudeCodeLogger.logStart()
       console.log('🚀 Starting workspace-isolated AI processing...')
 
       workspaceResult = await manager.create()
@@ -88,30 +87,27 @@ export class ClaudeCodeAgent {
       }
 
       console.log('📁 Workspace created at:', workspaceResult.workspacePath)
+      ClaudeCodeLogger.logStart()
 
       const messages: SDKMessage[] = []
 
-      const originalDir = process.cwd()
-      process.chdir(workspaceResult.workspacePath!)
-      try {
-        for await (const msg of query({
-          prompt,
-          abortController: new AbortController(),
-          options: {
-            maxTurns: this.config.maxTurns || 50,
-            cwd: workspaceResult.workspacePath,
-            allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash'],
-            disallowedTools: this.config.disallowedTools || [],
-            permissionMode: this.config.permissionMode || 'acceptEdits',
-            customSystemPrompt: this.config.customSystemPrompt || MAIN_SYSTEM_PROMPT,
-            appendSystemPrompt: this.config.appendSystemPrompt
-          }
-        })) {
-          ClaudeCodeLogger.logMessage(msg)
-          messages.push(msg)
+      const workspacePrompt = createWorkspacePrompt(workspaceResult.workspacePath!)
+
+      for await (const msg of query({
+        prompt,
+        abortController: new AbortController(),
+        options: {
+          maxTurns: this.config.maxTurns || 50,
+          cwd: workspaceResult.workspacePath,
+          allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash(npm run build)', 'Bash(npm run dev)', 'Bash(npm run lint)', 'Bash(npm run test)', 'Bash(npm ci)', 'Bash(npm install)'],
+          disallowedTools: this.config.disallowedTools || [],
+          permissionMode: this.config.permissionMode || 'acceptEdits',
+          customSystemPrompt: workspacePrompt,
+          appendSystemPrompt: this.config.appendSystemPrompt
         }
-      } finally {
-        process.chdir(originalDir)
+      })) {
+        ClaudeCodeLogger.logMessage(msg)
+        messages.push(msg)
       }
 
       if (workspaceConfig.validateAfter) {

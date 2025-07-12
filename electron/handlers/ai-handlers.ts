@@ -38,7 +38,13 @@ export function setupAIHandlers(rebuildCallback: () => void) {
         }
       })
       
-      aiAgent = new ClaudeCodeAgent({ apiKey })
+      const projectRoot = path.resolve(__dirname, '../../../')
+      
+      aiAgent = new ClaudeCodeAgent({ 
+        apiKey,
+        cwd: projectRoot 
+      })
+      
       await aiAgent.initialize()
       
       return { success: true }
