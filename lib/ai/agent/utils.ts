@@ -1,6 +1,32 @@
 import type { SDKMessage, ClaudeEvent } from './types'
+import { MAIN_SYSTEM_PROMPT } from './main-prompt'
 
 let eventCallback: ((event: ClaudeEvent) => void) | null = null
+
+export function getQueryOptions(config: any, cwd?: string, customSystemPrompt?: string) {
+  const workspaceDir = cwd || config.cwd || process.cwd()
+  
+  return {
+    maxTurns: config.maxTurns || 50,
+    cwd: workspaceDir,
+    allowedTools: config.allowedTools || [
+      'Read', 'Write', 'Edit', 'List', 'Search', 'Find', 
+      'Bash(npm run build)', 'Bash(npm run dev)', 'Bash(npm run lint)', 'Bash(npm run test)', 
+      'Bash(npm ci)', 'Bash(npm install)', 
+      'Bash(npm run electron)', 'Bash(npm run electron:dev)', 'Bash(npm run electron:build)', 'Bash(npm run electron:pack)',
+      `Bash(mkdir ${workspaceDir}/*)`, 
+      `Bash(ls ${workspaceDir}/*)`, 
+      `Bash(cat ${workspaceDir}/*)`, 
+      `Bash(find ${workspaceDir} *)`, 
+      `Bash(grep * ${workspaceDir}/*)`,
+      'Bash(ls)', 'Bash(ls .)', 'Bash(ls ./)', 'Bash(pwd)'
+    ],
+    disallowedTools: config.disallowedTools || [],
+    permissionMode: config.permissionMode || 'acceptEdits',
+    customSystemPrompt: customSystemPrompt || config.customSystemPrompt || MAIN_SYSTEM_PROMPT,
+    appendSystemPrompt: config.appendSystemPrompt
+  }
+}
 
 export class ClaudeCodeLogger {
   static setEventCallback(callback: (event: ClaudeEvent) => void): void {

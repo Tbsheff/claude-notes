@@ -1,8 +1,8 @@
 import React from 'react'
-import { Download, FileText, Save } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SettingsDialog } from './settings-dialog'
-import { AgentLogPopover } from './agent-log-popover/agent-log-popover'
+import { AgentLogPopover } from './agent-log-popover'
 
 interface NoteEditorHeaderProps {
   createdAt: Date
@@ -34,7 +34,6 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
     <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-background">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          <FileText className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
             {createdAt.toLocaleDateString('en-US', { 
               weekday: 'long', 
@@ -68,10 +67,9 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
           variant="ghost"
           size="sm"
           onClick={handleExport}
-          className="flex items-center gap-2"
+          className="flex items-center"
         >
-          <Save className="h-4 w-4" />
-          Export
+          <Download className="h-4 w-4" />
         </Button>
         
         <SettingsDialog />

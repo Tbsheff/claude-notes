@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { AgentLogToolsView } from './agent-log-tools-view'
+import { AgentLogToolsView } from '@/app/modules/agent/main'
 import { ClaudeEvent } from '@/lib/ai/agent/types'
 
 interface AgentLogPopoverProps {
@@ -46,15 +46,6 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
     setHasNewEvents(false)
   }
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
-    })
-  }
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -68,7 +59,7 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
         </Button>
       </PopoverTrigger>
       
-      <PopoverContent className="w-[500px] p-0" align="end">
+      <PopoverContent className="w-[400px] p-0" align="end">
         <div className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-gray-900">Agent Activity</h4>
@@ -86,7 +77,7 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
         </div>
         
         <ScrollArea className="h-80">
-          <AgentLogToolsView events={events} formatTime={formatTime} />
+          <AgentLogToolsView events={events} />
         </ScrollArea>
       </PopoverContent>
     </Popover>

@@ -1,7 +1,7 @@
 import { query, type SDKMessage } from '@anthropic-ai/claude-code'
 import { AgentConfig, AgentResponse, WorkspaceConfig, WorkspaceResult } from './types'
-import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from '../prompts/main-prompt'
-import { ClaudeCodeLogger } from './utils'
+import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from './main-prompt'
+import { ClaudeCodeLogger, getQueryOptions } from './utils'
 import { WorkspaceManager } from '../workspace/manager'
 import { Validator } from '../workspace/validator'
 
@@ -36,15 +36,7 @@ export class ClaudeCodeAgent {
       
       for await (const msg of query({
         prompt,
-        options: {
-          maxTurns: this.config.maxTurns || 50,
-          cwd: this.config.cwd || process.cwd(),
-          allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash(npm run build)', 'Bash(npm run dev)', 'Bash(npm run lint)', 'Bash(npm run test)', 'Bash(npm ci)', 'Bash(npm install)', 'Bash(npm run electron)', 'Bash(npm run electron:dev)', 'Bash(npm run electron:build)', 'Bash(npm run electron:pack)'],
-          disallowedTools: this.config.disallowedTools || [],
-          permissionMode: this.config.permissionMode || 'acceptEdits',
-          customSystemPrompt: this.config.customSystemPrompt || MAIN_SYSTEM_PROMPT,
-          appendSystemPrompt: this.config.appendSystemPrompt
-        }
+        options: getQueryOptions(this.config)
       })) {
         ClaudeCodeLogger.logMessage(msg)
         messages.push(msg)
@@ -96,15 +88,7 @@ export class ClaudeCodeAgent {
       for await (const msg of query({
         prompt,
         abortController: new AbortController(),
-        options: {
-          maxTurns: this.config.maxTurns || 50,
-          cwd: workspaceResult.workspacePath,
-          allowedTools: this.config.allowedTools || ['Read', 'Write', 'Edit', 'List', 'Search', 'Find', 'Bash(npm run build)', 'Bash(npm run dev)', 'Bash(npm run lint)', 'Bash(npm run test)', 'Bash(npm ci)', 'Bash(npm install)'],
-          disallowedTools: this.config.disallowedTools || [],
-          permissionMode: this.config.permissionMode || 'acceptEdits',
-          customSystemPrompt: workspacePrompt,
-          appendSystemPrompt: this.config.appendSystemPrompt
-        }
+        options: getQueryOptions(this.config, workspaceResult.workspacePath!, workspacePrompt)
       })) {
         ClaudeCodeLogger.logMessage(msg)
         messages.push(msg)
