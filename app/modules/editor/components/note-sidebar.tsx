@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, FileText, Trash2 } from 'lucide-react'
+import { Plus, FileText, MoreHorizontal } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -13,6 +13,12 @@ import {
   SidebarMenuAction,
   SidebarMenuSkeleton,
 } from '@/components/ui/sidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { editorApi } from '../api'
 import { Note } from '@/types/electron'
 
@@ -50,9 +56,7 @@ export function NotesSidebar({
     }
   }
 
-  const handleDeleteNote = async (noteId: string, event: React.MouseEvent) => {
-    event.stopPropagation()
-    
+  const handleDeleteNote = async (noteId: string) => {
     if (confirm('Are you sure you want to delete this note?')) {
       try {
         await onDeleteNote(noteId)
@@ -61,6 +65,10 @@ export function NotesSidebar({
         console.error('Failed to delete note:', error)
       }
     }
+  }
+
+  const handleExportNote = async (note: Note) => {
+    console.log('Export note:', note.title)
   }
 
   const handleCreateNote = async () => {
@@ -108,11 +116,26 @@ export function NotesSidebar({
                         </div>
                       </div>
                     </SidebarMenuButton>
-                    <SidebarMenuAction
-                      onClick={(e) => handleDeleteNote(note.id, e)}
-                      showOnHover
-                    >
-                      <Trash2 className="h-4 w-4" />
+                    <SidebarMenuAction showOnHover>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className="flex items-center justify-center w-full h-full cursor-pointer">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleExportNote(note)}
+                          >
+                            Export
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteNote(note.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </SidebarMenuAction>
                   </SidebarMenuItem>
                 ))

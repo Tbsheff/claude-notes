@@ -50,7 +50,7 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
       
       <PopoverContent className="w-[400px] p-0" align="end">
         <div className="border-b px-4 py-3">
-          <h4 className="text-sm font-medium text-gray-900">Agent Activity</h4>
+          <h4 className="text-sm font-medium text-foreground">Agent Activity</h4>
         </div>
         
         <ScrollArea className="h-80">

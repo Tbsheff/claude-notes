@@ -1,17 +1,16 @@
 import React from 'react'
-import { Zap, Bold, Italic, Underline, Copy, Scissors, Sparkles, Wrench, Loader2 } from 'lucide-react'
+import { Zap, Bold, Italic, Underline, Copy, Scissors, Sparkles, Wrench, Loader2, Heading1, Heading2, Heading3, List } from 'lucide-react'
 import { useAITextEditor } from '../features/ai-text-editor'
 
 interface SelectionToolbarProps {
   children?: React.ReactNode
   content: string
   setContent: (content: string) => void
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  editorRef: React.RefObject<HTMLDivElement | null>
   onBuild: () => void
 }
 
-export function SelectionToolbar({ children, content, setContent, textareaRef, onBuild }: SelectionToolbarProps) {
-  const [selectionRange, setSelectionRange] = React.useState({ start: 0, end: 0 })
+export function SelectionToolbar({ children, content, setContent, editorRef, onBuild }: SelectionToolbarProps) {
   const [showMenu, setShowMenu] = React.useState(false)
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
   const [loading, setLoading] = React.useState(false)
@@ -22,69 +21,75 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       
-      if (!textareaRef.current) return
+      const selection = window.getSelection()
+      if (!selection || selection.rangeCount === 0) return
 
-      const start = textareaRef.current.selectionStart
-      const end = textareaRef.current.selectionEnd
-
-      if (start !== end) {
-        setSelectionRange({ start, end })
+      const selectedText = selection.toString()
+      if (selectedText.trim().length > 0) {
         setMenuPosition({ x: e.clientX, y: e.clientY })
         setShowMenu(true)
       }
     }
 
-    if (textareaRef.current) {
-      textareaRef.current.addEventListener('contextmenu', handleContextMenu)
+    if (editorRef.current) {
+      editorRef.current.addEventListener('contextmenu', handleContextMenu)
       return () => {
-        if (textareaRef.current) {
-          textareaRef.current.removeEventListener('contextmenu', handleContextMenu)
+        if (editorRef.current) {
+          editorRef.current.removeEventListener('contextmenu', handleContextMenu)
         }
       }
     }
-  }, [textareaRef.current])
+  }, [editorRef.current])
 
   const handleFormat = (format: string) => {
-    const { start, end } = selectionRange
-    
-    if (start === end) {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
       alert('Please select some text first')
       return
     }
 
-    const selectedText = content.substring(start, end)
-    let formattedText = selectedText
+    const selectedText = selection.toString()
+    if (!selectedText) {
+      alert('Please select some text first')
+      return
+    }
     
     switch (format) {
       case 'bold':
-        formattedText = `**${selectedText}**`
+        document.execCommand('bold', false)
         break
       case 'italic':
-        formattedText = `*${selectedText}*`
+        document.execCommand('italic', false)
         break
       case 'underline':
-        formattedText = `<u>${selectedText}</u>`
+        document.execCommand('underline', false)
+        break
+      case 'h1':
+        document.execCommand('formatBlock', false, 'H1')
+        break
+      case 'h2':
+        document.execCommand('formatBlock', false, 'H2')
+        break
+      case 'h3':
+        document.execCommand('formatBlock', false, 'H3')
+        break
+      case 'bulletlist':
+        document.execCommand('insertUnorderedList', false)
         break
       case 'copy':
-        navigator.clipboard.writeText(selectedText)
-        setShowMenu(false)
-        return
+        document.execCommand('copy', false)
+        break
       case 'cut':
-        navigator.clipboard.writeText(selectedText)
-        formattedText = ''
+        document.execCommand('cut', false)
         break
     }
 
-    const newContent = content.substring(0, start) + formattedText + content.substring(end)
-    setContent(newContent)
     setShowMenu(false)
     
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus()
-        textareaRef.current.setSelectionRange(start, start + formattedText.length)
-      }
-    }, 0)
+    if (editorRef.current) {
+      editorRef.current.focus()
+      setContent(editorRef.current.innerHTML)
+    }
   }
 
   const handleBuildClick = () => {
@@ -93,14 +98,18 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
   }
 
   const handleAIAction = async (action: 'fix' | 'improve') => {
-    const { start, end } = selectionRange
-    
-    if (start === end) {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
       alert('Please select some text first')
       return
     }
 
-    const selectedText = content.substring(start, end)
+    const selectedText = selection.toString()
+    if (!selectedText) {
+      alert('Please select some text first')
+      return
+    }
+
     setLoading(true)
     setLoadingAction(action)
     
@@ -108,16 +117,17 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
       const result = await aiTextEditor.processText(action, selectedText)
 
       if (result.success && result.content) {
-        const newContent = content.substring(0, start) + result.content.trim() + content.substring(end)
-        setContent(newContent)
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        const textNode = document.createTextNode(result.content.trim())
+        range.insertNode(textNode)
+        
         setShowMenu(false)
         
-        setTimeout(() => {
-          if (textareaRef.current) {
-            textareaRef.current.focus()
-            textareaRef.current.setSelectionRange(start, start + result.content!.trim().length)
-          }
-        }, 0)
+        if (editorRef.current) {
+          editorRef.current.focus()
+          setContent(editorRef.current.innerHTML)
+        }
       } else {
         alert('AI request failed: ' + (result.error || 'Unknown error'))
         setShowMenu(false)
@@ -197,6 +207,42 @@ export function SelectionToolbar({ children, content, setContent, textareaRef, o
           >
             <Underline className="h-4 w-4" />
             Underline
+          </div>
+          
+          <div className="bg-border -mx-1 my-1 h-px" />
+          
+          <div 
+            onClick={() => handleFormat('h1')}
+            className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <Heading1 className="h-4 w-4" />
+            Heading 1
+          </div>
+          
+          <div 
+            onClick={() => handleFormat('h2')}
+            className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <Heading2 className="h-4 w-4" />
+            Heading 2
+          </div>
+          
+          <div 
+            onClick={() => handleFormat('h3')}
+            className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <Heading3 className="h-4 w-4" />
+            Heading 3
+          </div>
+          
+          <div className="bg-border -mx-1 my-1 h-px" />
+          
+          <div 
+            onClick={() => handleFormat('bulletlist')}
+            className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <List className="h-4 w-4" />
+            Bullet List
           </div>
           
           <div className="bg-border -mx-1 my-1 h-px" />
