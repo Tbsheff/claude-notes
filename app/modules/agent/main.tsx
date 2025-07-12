@@ -1,10 +1,8 @@
-import React from 'react'
+
 import { FileText, Edit3, Search, FolderOpen, Code, Wrench, CheckSquare } from 'lucide-react'
 import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
-import { groupToolResults } from '@/app/modules/agent/utils'
 import { AgentMessage } from '@/app/modules/agent/components/agent-message'
 import { TreeToolAction, CollapseToolAction } from '@/app/modules/agent/components/tool-actions'
-import { TodoWriteContent, TaskContent } from '@/app/modules/agent/components/content-renderers'
 
 export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
   if (events.length === 0) {
@@ -14,8 +12,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
       </div>
     )
   }
-
-  const toolResults = groupToolResults(events)
 
   return (
     <div className="max-h-96 overflow-y-auto">
@@ -38,12 +34,9 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
             return (
               <CollapseToolAction
                 key={index}
-                event={event}
                 icon={<Edit3 className="h-3 w-3 text-orange-500" />}
                 title={`Modified ${fileName}`}
-              >
-                <div className="text-xs font-mono text-gray-600 break-all max-w-full overflow-hidden">{filePath}</div>
-              </CollapseToolAction>
+              />
             )
           }
           
@@ -51,12 +44,9 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
             return (
               <CollapseToolAction
                 key={index}
-                event={event}
                 icon={<CheckSquare className="h-3 w-3 text-blue-500" />}
                 title="Writing Tasks"
-              >
-                <TodoWriteContent message={message} />
-              </CollapseToolAction>
+              />
             )
           }
           
@@ -64,12 +54,9 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
             return (
               <CollapseToolAction
                 key={index}
-                event={event}
                 icon={<Wrench className="h-3 w-3 text-purple-500" />}
                 title="Task"
-              >
-                <TaskContent message={message} />
-              </CollapseToolAction>
+              />
             )
           }
           
@@ -80,7 +67,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<FileText className="h-3 w-3 text-blue-500" />}
                 label="Read"
-                toolResults={toolResults}
               />
             )
           }
@@ -92,7 +78,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<Edit3 className="h-3 w-3 text-green-500" />}
                 label="Write"
-                toolResults={toolResults}
               />
             )
           }
@@ -104,7 +89,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<Code className="h-3 w-3 text-gray-600" />}
                 label="Bash"
-                toolResults={toolResults}
               />
             )
           }
@@ -116,7 +100,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<FolderOpen className="h-3 w-3 text-yellow-600" />}
                 label="List"
-                toolResults={toolResults}
               />
             )
           }
@@ -128,7 +111,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<Search className="h-3 w-3 text-purple-500" />}
                 label="Search"
-                toolResults={toolResults}
               />
             )
           }
@@ -140,7 +122,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
                 event={event}
                 icon={<Search className="h-3 w-3 text-purple-500" />}
                 label="Grep"
-                toolResults={toolResults}
               />
             )
           }
@@ -151,7 +132,6 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
               event={event}
               icon={<Wrench className="h-3 w-3 text-gray-500" />}
               label="Tool"
-              toolResults={toolResults}
             />
           )
         }

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { AgentLogToolsView } from '@/app/modules/agent/main'
 import { ClaudeEvent } from '@/lib/ai/agent/types'
 
@@ -41,39 +42,15 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
     }
   }, [])
 
-  const clearEvents = () => {
-    setEvents([])
-    setHasNewEvents(false)
-  }
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="flex items-center space-x-2 hover:bg-blue-50 transition-colors"
-        >
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{buildStatus}</span>
-        </Button>
+        <BuildStatusBadge status="building">{buildStatus}</BuildStatusBadge>
       </PopoverTrigger>
       
       <PopoverContent className="w-[400px] p-0" align="end">
         <div className="border-b px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-900">Agent Activity</h4>
-            {events.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearEvents}
-                className="h-6 px-2 text-xs text-gray-500 hover:text-gray-900"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
+          <h4 className="text-sm font-medium text-gray-900">Agent Activity</h4>
         </div>
         
         <ScrollArea className="h-80">

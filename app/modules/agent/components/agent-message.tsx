@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { MessageSquare } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { AgentMessageProps } from '@/app/modules/agent/api/types'

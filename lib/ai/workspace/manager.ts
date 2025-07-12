@@ -73,6 +73,10 @@ export class WorkspaceManager {
   }
 
   private async getAllFiles(dir: string): Promise<string[]> {
+    return this.getAllFilesRecursive(dir, this.projectRoot, true)
+  }
+
+  private async getAllFilesRecursive(dir: string, basePath: string, shouldSkip: boolean = false): Promise<string[]> {
     const files: string[] = []
     
     try {
@@ -80,12 +84,12 @@ export class WorkspaceManager {
       
       for (const item of items) {
         const fullPath = join(dir, item.name)
-        const relativePath = relative(this.projectRoot, fullPath)
+        const relativePath = relative(basePath, fullPath)
         
-        if (this.shouldSkipPath(relativePath)) continue
+        if (shouldSkip && this.shouldSkipPath(relativePath)) continue
         
         if (item.isDirectory()) {
-          const subFiles = await this.getAllFiles(fullPath)
+          const subFiles = await this.getAllFilesRecursive(fullPath, basePath, shouldSkip)
           files.push(...subFiles)
         } else {
           files.push(relativePath)
@@ -175,27 +179,7 @@ export class WorkspaceManager {
   }
 
   private async getAllWorkspaceFiles_recursive(dir: string): Promise<string[]> {
-    const files: string[] = []
-    
-    try {
-      const items = await fs.readdir(dir, { withFileTypes: true })
-      
-      for (const item of items) {
-        const fullPath = join(dir, item.name)
-        const relativePath = relative(this.workspacePath, fullPath)
-        
-        if (item.isDirectory()) {
-          const subFiles = await this.getAllWorkspaceFiles_recursive(fullPath)
-          files.push(...subFiles)
-        } else {
-          files.push(relativePath)
-        }
-      }
-    } catch {
-      // Ignore directory read errors
-    }
-    
-    return files
+    return this.getAllFilesRecursive(dir, this.workspacePath, false)
   }
 
   async applyChanges(): Promise<void> {

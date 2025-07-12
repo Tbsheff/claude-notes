@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   ai: {
     initialize: (config) => ipcRenderer.invoke('ai:initialize', config),
-    processRequestWorkspace: (message) => ipcRenderer.invoke('ai:process-request-workspace', message)
+    processRequest: (message) => ipcRenderer.invoke('ai:process-request', message)
   },
   llmCall: (messages, model) => ipcRenderer.invoke('llm:call', messages, model),
   app: {

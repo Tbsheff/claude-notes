@@ -1,21 +1,5 @@
-import { ClaudeEvent } from '@/lib/ai/agent/types'
 
-export const parseJSON = (str: string) => {
-  try {
-    return JSON.parse(str)
-  } catch {
-    return null
-  }
-}
-
-export const extractJSONFromMessage = (message: string) => {
-  const match = message.match(/:\s*(\[.*\]|\{.*\})$/)
-  return match ? parseJSON(match[1]) : null
-}
-
-export const getFileName = (path: string) => {
-  return path.split('/').pop() || path
-}
+import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/utils'
 
 export const getShortLabel = (label: string, content: string) => {
   switch (label) {
@@ -26,9 +10,10 @@ export const getShortLabel = (label: string, content: string) => {
     case 'Edit':
       return `Modified ${getFileName(content)}`
     case 'Bash':
-      return `Executed ${content}`
+      const cleanContent = cleanWorkspacePath(content)
+      return `Executed ${truncateCommand(cleanContent)}`
     case 'List':
-      return `Listed ${getFileName(content) || 'directory'}`
+      return `Listed ${getDirName(content)}`
     case 'Search':
     case 'Find':
       return 'Searched files'
@@ -36,7 +21,7 @@ export const getShortLabel = (label: string, content: string) => {
       if (content.includes('Grep:')) {
         return 'Searched files'
       }
-      return content
+      return truncateCommand(content)
     case 'Grep':
       return 'Searched files'
     default:
@@ -44,13 +29,4 @@ export const getShortLabel = (label: string, content: string) => {
   }
 }
 
-export const groupToolResults = (events: ClaudeEvent[]) => {
-  return events
-    .filter(e => e.type === 'tool_result')
-    .reduce((acc, event) => {
-      if (event.tool_use_id) {
-        acc[event.tool_use_id] = event
-      }
-      return acc
-    }, {} as Record<string, ClaudeEvent>)
-} 
+ 

@@ -54,14 +54,14 @@ export function EditorPage() {
     setBuildStatus('Building...')
 
     try {
-      const result = await window.electronAPI.ai.processRequestWorkspace(selectedText)
+      const result = await window.electronAPI.ai.processRequest(selectedText)
       
       if (result.success) {
         console.log('AI Response:', result.response)
         if (result.changedFiles && result.changedFiles.length > 0) {
           console.log('Changed files:', result.changedFiles)
         }
-        setBuildStatus('Workspace validated, reloading...')
+        setBuildStatus('Changes applied, reloading...')
         
         setTimeout(() => {
           setIsBuilding(false)

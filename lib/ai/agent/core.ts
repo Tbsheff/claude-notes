@@ -24,42 +24,25 @@ export class ClaudeCodeAgent {
     ClaudeCodeLogger.logReady()
   }
 
-  async processRequest(prompt: string): Promise<AgentResponse> {
-    try {
-      if (!this.initialized) {
-        throw new Error('Agent not initialized. Call initialize() first.')
-      }
-
-      ClaudeCodeLogger.logStart()
-
-      const messages: SDKMessage[] = []
-      
-      for await (const msg of query({
-        prompt,
-        options: getQueryOptions(this.config)
-      })) {
-        ClaudeCodeLogger.logMessage(msg)
-        messages.push(msg)
-      }
-      
-      const resultMessage = messages.find((msg: SDKMessage) => msg.type === 'result')
-      const response = (resultMessage?.type === 'result' && resultMessage.subtype === 'success') 
-        ? resultMessage.result 
-        : 'Task completed'
-      
-      ClaudeCodeLogger.logComplete()
-      
-      return { success: true, response }
-    } catch (error) {
-      ClaudeCodeLogger.logError(error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      }
+  private async processMessages(queryOptions: any): Promise<SDKMessage[]> {
+    const messages: SDKMessage[] = []
+    
+    for await (const msg of query(queryOptions)) {
+      ClaudeCodeLogger.logMessage(msg)
+      messages.push(msg)
     }
+    
+    return messages
   }
 
-  async processRequestWorkspace(
+  private extractResponse(messages: SDKMessage[]): string {
+    const resultMessage = messages.find((msg: SDKMessage) => msg.type === 'result')
+    return (resultMessage?.type === 'result' && resultMessage.subtype === 'success') 
+      ? resultMessage.result 
+      : 'Task completed'
+  }
+
+  async processRequest(
     prompt: string, 
     workspaceConfig: WorkspaceConfig
   ): Promise<AgentResponse & { workspaceResult?: WorkspaceResult }> {
@@ -81,18 +64,13 @@ export class ClaudeCodeAgent {
       console.log('📁 Workspace created at:', workspaceResult.workspacePath)
       ClaudeCodeLogger.logStart()
 
-      const messages: SDKMessage[] = []
-
       const workspacePrompt = createWorkspacePrompt(workspaceResult.workspacePath!)
 
-      for await (const msg of query({
+      const messages = await this.processMessages({
         prompt,
         abortController: new AbortController(),
         options: getQueryOptions(this.config, workspaceResult.workspacePath!, workspacePrompt)
-      })) {
-        ClaudeCodeLogger.logMessage(msg)
-        messages.push(msg)
-      }
+      })
 
       if (workspaceConfig.validateAfter) {
         console.log('🔍 Validating workspace changes...')
@@ -113,10 +91,7 @@ export class ClaudeCodeAgent {
       console.log('📋 Applying changes to main codebase...')
       await manager.applyChanges()
 
-      const resultMessage = messages.find((msg: SDKMessage) => msg.type === 'result')
-      const response = (resultMessage?.type === 'result' && resultMessage.subtype === 'success') 
-        ? resultMessage.result 
-        : 'Task completed'
+      const response = this.extractResponse(messages)
       
       console.log('✅ Workspace processing completed successfully!')
       ClaudeCodeLogger.logComplete()

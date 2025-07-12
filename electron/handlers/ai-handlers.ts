@@ -53,14 +53,14 @@ export function setupAIHandlers(rebuildCallback: () => void) {
     }
   })
 
-  ipcMain.handle('ai:process-request-workspace', async (event, message) => {
+  ipcMain.handle('ai:process-request', async (event, message) => {
     try {
       if (!aiAgent) {
         throw new Error('AI Agent not initialized')
       }
 
       _claudeIsWorking = true
-      console.log('🚀 Agent: Starting workspace mode...')
+      console.log('🚀 Agent: Starting AI processing...')
 
       const workspaceConfig = {
         enabled: true,
@@ -70,12 +70,12 @@ export function setupAIHandlers(rebuildCallback: () => void) {
         validateAfter: true 
       }
 
-      const result = await aiAgent.processRequestWorkspace(message, workspaceConfig)
+      const result = await aiAgent.processRequest(message, workspaceConfig)
       
       _claudeIsWorking = false
       
       if (result.success) {
-        console.log('✅ Claude Code: Workspace work completed!')
+        console.log('✅ Claude Code: Work completed!')
         
         setTimeout(() => rebuildCallback(), 500)
         
@@ -85,13 +85,13 @@ export function setupAIHandlers(rebuildCallback: () => void) {
           workspaceResult: result.workspaceResult
         }
       } else {
-        console.log('❌ Claude Code workspace: Work failed')
+        console.log('❌ Claude Code: Work failed')
         return result
       }
       
     } catch (error) {
       _claudeIsWorking = false
-      console.log('❌ Claude Code workspace: Work failed')
+      console.log('❌ Claude Code: Work failed')
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })

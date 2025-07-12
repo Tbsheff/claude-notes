@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { EditorPage } from './app/modules/editor/pages/editor-page'
 import './styles/globals.css'

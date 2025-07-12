@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { Settings, Moon, Sun, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -7,8 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogDescription
+  DialogTrigger
 } from '@/components/ui/dialog'
 import { getAllFeatures } from '../features/registry'
 import { useTheme } from '@/lib/providers/theme-provider'

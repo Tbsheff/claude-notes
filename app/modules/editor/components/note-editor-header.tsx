@@ -1,8 +1,9 @@
 import React from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './settings-dialog'
-import { AgentLogPopover } from './agent-log-popover'
+import { AgentLogPopover } from '../../agent/components/agent-log-popover'
 
 interface NoteEditorHeaderProps {
   createdAt: Date
@@ -12,6 +13,15 @@ interface NoteEditorHeaderProps {
 }
 
 export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }: NoteEditorHeaderProps) {
+  const [currentTime, setCurrentTime] = React.useState(new Date())
+  
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
   
   const handleExport = () => {
     if (!content.trim()) {
@@ -39,10 +49,9 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
               weekday: 'long', 
               month: 'long', 
               day: 'numeric' 
-            })} at {createdAt.toLocaleTimeString('en-US', {
+            })}, {currentTime.toLocaleTimeString('en-US', {
               hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
+              minute: '2-digit'
             })}
           </span>
         </div>
@@ -52,15 +61,9 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
         {isBuilding ? (
           <AgentLogPopover buildStatus={buildStatus} />
         ) : buildStatus.includes('Changes applied') ? (
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-green-600 dark:text-green-400 font-medium">{buildStatus}</span>
-          </div>
+          <BuildStatusBadge status="success">{buildStatus}</BuildStatusBadge>
         ) : buildStatus === 'Reloading...' ? (
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">{buildStatus}</span>
-          </div>
+          <BuildStatusBadge status="reloading">{buildStatus}</BuildStatusBadge>
         ) : null}
         
         <Button
