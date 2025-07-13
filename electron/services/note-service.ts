@@ -4,22 +4,22 @@ const { app } = require('electron')
 import type { Note } from '../../app/modules/editor/api/types'
 
 export function getNotesDir(): string {
-  const documentsPath = app.getPath('documents')
-  const notesDir = path.join(documentsPath, 'AIEditor', 'notes')
+  const projectRoot = path.resolve(__dirname, '../../../')
+  const notesDir = path.join(projectRoot, 'data', 'notes')
   if (!fs.existsSync(notesDir)) fs.mkdirSync(notesDir, { recursive: true })
   return notesDir
 }
 
 export function getSettingsPath(): string {
-  const documentsPath = app.getPath('documents')
-  const dir = path.join(documentsPath, 'AIEditor')
+  const projectRoot = path.resolve(__dirname, '../../../')
+  const dir = path.join(projectRoot, 'data')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   return path.join(dir, 'settings.json')
 }
 
 export function getIndexPath(): string {
-  const documentsPath = app.getPath('documents')
-  const dir = path.join(documentsPath, 'AIEditor')
+  const projectRoot = path.resolve(__dirname, '../../../')
+  const dir = path.join(projectRoot, 'data')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   return path.join(dir, 'index.json')
 }
