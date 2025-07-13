@@ -2,7 +2,7 @@ import React from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
-import { SettingsDialog } from './settings-dialog'
+import { SettingsDialog } from './editor-settings-dialog'
 import { AgentLogPopover } from '../../agent/components/agent-log-popover'
 
 interface NoteEditorHeaderProps {

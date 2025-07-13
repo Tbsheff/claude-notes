@@ -6,6 +6,16 @@ export interface Note {
   updatedAt: string
 }
 
+export interface APIKeysSettings {
+  anthropicApiKey?: string
+}
+
+export interface AppSettings {
+  apiKeys: APIKeysSettings
+  theme?: 'light' | 'dark'
+  features?: Record<string, boolean>
+}
+
 export interface EditorSettings {
   features: Record<string, boolean>
   lastOpenedNote?: string

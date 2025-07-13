@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { editorApi } from '../../editor/api'
 import { generalApi } from '../api'
-import { Note } from '@/types/electron'
+import { Note } from '@/app/modules/editor/api'
 
 interface NotesSidebarProps {
   currentNote: Note | null

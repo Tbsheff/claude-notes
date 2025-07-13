@@ -10,7 +10,7 @@ interface SelectionToolbarProps {
   onBuild: () => void
 }
 
-export function SelectionToolbar({ children, content, setContent, editorRef, onBuild }: SelectionToolbarProps) {
+export function SelectionToolbar({ children, content: _content, setContent, editorRef, onBuild }: SelectionToolbarProps) {
   const [showMenu, setShowMenu] = React.useState(false)
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
   const [loading, setLoading] = React.useState(false)

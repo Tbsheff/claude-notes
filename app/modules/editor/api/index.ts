@@ -1,4 +1,3 @@
-import { Note } from '@/types/electron'
 import { 
   EditorSettings, 
   CreateNoteRequest, 

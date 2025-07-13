@@ -16,7 +16,7 @@ import { getAllFeatures } from '../features/registry'
 import { useTheme } from '@/lib/providers/theme-provider'
 import { useAllFeatures, featureManager } from '../features/feature-manager'
 import { useState, useEffect } from 'react'
-import { AppSettings, APIKeysSettings } from '@/types/electron'
+import { AppSettings, APIKeysSettings } from '@/app/modules/editor/api'
 
 export function SettingsDialog() {
   const { theme, toggleTheme } = useTheme()

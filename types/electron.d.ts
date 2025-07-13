@@ -1,20 +1,4 @@
-export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface APIKeysSettings {
-  anthropicApiKey?: string;
-}
-
-export interface AppSettings {
-  apiKeys: APIKeysSettings;
-  theme?: 'light' | 'dark';
-  features?: Record<string, boolean>;
-}
+import type { Note, APIKeysSettings, AppSettings } from '../app/modules/editor/api/types'
 
 export interface ElectronAPI {
   openFile: () => Promise<string | undefined>;

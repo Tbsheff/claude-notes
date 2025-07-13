@@ -16,7 +16,7 @@ export function createWindow() {
     }
   });
 
-  const { setMainWindow } = require('./handlers/ai-handlers')
+  const { setMainWindow } = require('./ipc/ai-handlers')
   setMainWindow(mainWindow)
 
   const isDev = process.env.NODE_ENV === 'development';
