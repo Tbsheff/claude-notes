@@ -41,6 +41,8 @@ export function NotesSidebar({
   const [loading, setLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
 
   useEffect(() => {
     loadNotes()
@@ -69,6 +71,40 @@ export function NotesSidebar({
         console.error('Failed to delete note:', error)
       }
     }
+  }
+
+  const handleStartRename = (note: Note) => {
+    setEditingNoteId(note.id)
+    setEditingTitle(note.title)
+  }
+
+  const handleSaveRename = async (noteId: string) => {
+    try {
+      const note = notes.find(n => n.id === noteId)
+      if (note) {
+        const result = await editorApi.saveNote({
+          noteId,
+          content: note.content,
+          title: editingTitle
+        })
+        
+        if (result.success) {
+          setNotes(notes.map(n => 
+            n.id === noteId ? { ...n, title: editingTitle } : n
+          ))
+        }
+      }
+    } catch (error) {
+      console.error('Failed to rename note:', error)
+    } finally {
+      setEditingNoteId(null)
+      setEditingTitle('')
+    }
+  }
+
+  const handleCancelRename = () => {
+    setEditingNoteId(null)
+    setEditingTitle('')
   }
 
   const handleExportNote = async (note: Note) => {
@@ -151,9 +187,30 @@ export function NotesSidebar({
                     >
                       <FileText className="h-4 w-4" />
                       <div className="flex-1 min-w-0">
-                        <div className="truncate font-medium">
-                          {note.title}
-                        </div>
+                        {editingNoteId === note.id ? (
+                          <input
+                            type="text"
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onBlur={() => handleSaveRename(note.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveRename(note.id)
+                              } else if (e.key === 'Escape') {
+                                handleCancelRename()
+                              }
+                            }}
+                            className="bg-transparent border-none outline-none w-full font-medium"
+                            autoFocus
+                          />
+                        ) : (
+                          <div 
+                            className="truncate font-medium"
+                            onDoubleClick={() => handleStartRename(note)}
+                          >
+                            {note.title}
+                          </div>
+                        )}
                       </div>
                     </SidebarMenuButton>
                     <SidebarMenuAction showOnHover>
@@ -164,6 +221,11 @@ export function NotesSidebar({
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleStartRename(note)}
+                          >
+                            Rename
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleExportNote(note)}
                           >
@@ -188,7 +250,7 @@ export function NotesSidebar({
           <SidebarGroupContent>
             <div className="space-y-2 p-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={handleExportWorkspace}
                 disabled={isExporting}
@@ -203,7 +265,7 @@ export function NotesSidebar({
               </Button>
               
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={handleResetFeatures}
                 disabled={isResetting}

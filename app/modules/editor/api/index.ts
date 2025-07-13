@@ -90,7 +90,12 @@ class EditorApi {
 
   async saveSettings(settings: EditorSettings): Promise<SettingsApiResponse> {
     try {
-      const result = await window.electronAPI.settings.save(settings)
+      const appSettings = {
+        apiKeys: { anthropicApiKey: '' },
+        features: settings.features,
+        theme: 'light' as const
+      }
+      const result = await window.electronAPI.settings.save(appSettings)
       return {
         success: result.success,
         data: settings,

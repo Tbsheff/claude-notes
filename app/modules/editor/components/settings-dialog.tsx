@@ -101,7 +101,7 @@ export function SettingsDialog() {
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* API Keys Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">
@@ -148,7 +148,7 @@ export function SettingsDialog() {
           </div>
 
           {/* Appearance Section */}
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">Appearance</h3>
             <div className="flex items-center justify-between space-x-4 p-4 rounded-lg border bg-muted/50">
               <div className="flex-1 space-y-1">
@@ -165,7 +165,7 @@ export function SettingsDialog() {
           </div>
           
           {/* Features Section */}
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">Features</h3>
             <div className="flex flex-col gap-4">
               {features.map((feature) => (

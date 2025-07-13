@@ -3,11 +3,11 @@ import { NoteEditorHeader } from '../components/note-editor-header'
 import { NoteEditorFooter } from '../components/note-editor-footer'
 import { SelectionToolbar } from '../components/selection-toolbar'
 import { NotesSidebar } from '../../general/components/app-sidebar'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar'
 import { editorApi } from '../api'
 import { Note } from '@/types/electron'
 
-export function EditorPage() {
+function EditorContent() {
   const [content, setContent] = useState('')
   const [isBuilding, setIsBuilding] = useState(false)
   const [buildStatus, setBuildStatus] = useState('Building...')
@@ -16,8 +16,21 @@ export function EditorPage() {
   const [createdAt] = useState(new Date())
   const [lastSavedContent, setLastSavedContent] = useState('')
   const [sidebarKey, setSidebarKey] = useState(0)
+  const { toggleSidebar } = useSidebar()
 
   const editorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleSidebar])
 
   const reloadSidebar = () => {
     setSidebarKey(prev => prev + 1)
@@ -519,48 +532,54 @@ export function EditorPage() {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="w-full h-screen max-h-screen flex bg-background">
-        <NotesSidebar
-          key={sidebarKey}
-          currentNote={currentNote}
-          onNoteSelect={handleNoteSelect}
-          onCreateNote={createNewNote}
-          onDeleteNote={handleDeleteNote}
+    <div className="w-full h-screen max-h-screen flex bg-background">
+      <NotesSidebar
+        key={sidebarKey}
+        currentNote={currentNote}
+        onNoteSelect={handleNoteSelect}
+        onCreateNote={createNewNote}
+        onDeleteNote={handleDeleteNote}
+      />
+      
+      <SidebarInset className="flex flex-col">
+        <NoteEditorHeader 
+          createdAt={createdAt}
+          isBuilding={isBuilding}
+          buildStatus={buildStatus}
+          content={getMarkdownContent()}
         />
-        
-        <SidebarInset className="flex flex-col">
-          <NoteEditorHeader 
-            createdAt={createdAt}
-            isBuilding={isBuilding}
-            buildStatus={buildStatus}
-            content={getMarkdownContent()}
+
+        <div className="flex-1 bg-background relative">
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning={true}
+            onInput={handleContentInput}
+            onKeyDown={handleKeyDown}
+            className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed empty:before:content-['Start_writing...'] empty:before:text-muted-foreground [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5 [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4 [&_h4]:text-lg [&_h4]:font-medium [&_h4]:mb-2 [&_h4]:mt-3 [&_h5]:text-base [&_h5]:font-medium [&_h5]:mb-1 [&_h5]:mt-2 [&_h6]:text-sm [&_h6]:font-medium [&_h6]:mb-1 [&_h6]:mt-2 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:my-2 [&_ul]:pl-6 [&_li]:mb-1 [&_ol]:list-decimal [&_ol]:list-outside [&_ol]:my-2 [&_ol]:pl-6"
+            style={{ fontFamily: 'Manrope, sans-serif' }}
           />
+          
+          <SelectionToolbar
+            content={content}
+            setContent={handleContentChange}
+            editorRef={editorRef}
+            onBuild={handleBuild}
+          />
+        </div>
 
-          <div className="flex-1 bg-background relative">
-            <div
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning={true}
-              onInput={handleContentInput}
-              onKeyDown={handleKeyDown}
-              className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed empty:before:content-['Start_writing...'] empty:before:text-muted-foreground [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5 [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4 [&_h4]:text-lg [&_h4]:font-medium [&_h4]:mb-2 [&_h4]:mt-3 [&_h5]:text-base [&_h5]:font-medium [&_h5]:mb-1 [&_h5]:mt-2 [&_h6]:text-sm [&_h6]:font-medium [&_h6]:mb-1 [&_h6]:mt-2 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:my-2 [&_ul]:pl-6 [&_li]:mb-1 [&_ol]:list-decimal [&_ol]:list-outside [&_ol]:my-2 [&_ol]:pl-6"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-            />
-            
-            <SelectionToolbar
-              content={content}
-              setContent={handleContentChange}
-              editorRef={editorRef}
-              onBuild={handleBuild}
-            />
-          </div>
+        <div className="flex-shrink-0">
+          <NoteEditorFooter content={getPlainTextContent()} />
+        </div>
+      </SidebarInset>
+    </div>
+  )
+}
 
-          <div className="flex-shrink-0">
-            <NoteEditorFooter content={getPlainTextContent()} />
-          </div>
-        </SidebarInset>
-      </div>
+export function EditorPage() {
+  return (
+    <SidebarProvider defaultOpen={false}>
+      <EditorContent />
     </SidebarProvider>
   )
 } 
