@@ -1,9 +1,12 @@
-export interface Note {
+export interface NoteMetadata {
   id: string
   title: string
-  content: string
   createdAt: string
   updatedAt: string
+}
+
+export interface Note extends NoteMetadata {
+  content: string
 }
 
 export interface APIKeysSettings {

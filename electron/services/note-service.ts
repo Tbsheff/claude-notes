@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 const { app } = require('electron')
-import type { Note } from '../../app/modules/editor/api/types'
+import type { Note, NoteMetadata } from '../../app/modules/editor/api/types'
 
 export function getNotesDir(): string {
   const projectRoot = path.resolve(__dirname, '../../../')
@@ -54,7 +54,7 @@ export function createMarkdown(note: Note): string {
   return front + note.content
 }
 
-export function loadIndex(): { notes: Note[] } {
+export function loadIndex(): { notes: NoteMetadata[] } {
   const idxPath = getIndexPath()
   if (!fs.existsSync(idxPath)) return { notes: [] }
   try {
@@ -64,7 +64,7 @@ export function loadIndex(): { notes: Note[] } {
   }
 }
 
-export function saveIndex(index: { notes: Note[] }) {
+export function saveIndex(index: { notes: NoteMetadata[] }) {
   fs.writeFileSync(getIndexPath(), JSON.stringify(index, null, 2))
 }
 
@@ -76,6 +76,15 @@ export function createNoteFromMarkdown(noteId: string, md: string): Note {
     content: body,
     createdAt: frontmatter.created || new Date().toISOString(),
     updatedAt: frontmatter.updated || new Date().toISOString(),
+  }
+}
+
+function getNoteMetadata(note: Note): NoteMetadata {
+  return {
+    id: note.id,
+    title: note.title,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
   }
 }
 
@@ -96,7 +105,7 @@ export async function createNote(title = 'Untitled Note', content = '') {
     fs.writeFileSync(path, createMarkdown(note))
 
     const index = loadIndex()
-    index.notes.push(note)
+    index.notes.push(getNoteMetadata(note))
     index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     saveIndex(index)
 
@@ -123,8 +132,8 @@ export async function saveNote(noteId: string, content: string, title?: string) 
 
     const index = loadIndex()
     const idx = index.notes.findIndex((n) => n.id === noteId)
-    if (idx !== -1) index.notes[idx] = updated
-    else index.notes.push(updated)
+    if (idx !== -1) index.notes[idx] = getNoteMetadata(updated)
+    else index.notes.push(getNoteMetadata(updated))
     index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     saveIndex(index)
 
