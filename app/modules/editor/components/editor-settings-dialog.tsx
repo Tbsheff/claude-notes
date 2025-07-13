@@ -15,7 +15,7 @@ import {
 import { getAllFeatures } from '../features/registry'
 import { useTheme } from '@/lib/providers/theme-provider'
 import { useAllFeatures, featureManager } from '../features/feature-manager'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AppSettings, APIKeysSettings } from '@/app/modules/editor/api'
 
 export function SettingsDialog() {
@@ -26,10 +26,20 @@ export function SettingsDialog() {
   const [apiKeys, setApiKeys] = useState<APIKeysSettings>({})
   const [isLoading, setIsLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [isOpen, setIsOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadSettings()
   }, [])
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.blur()
+      }, 50)
+    }
+  }, [isOpen])
 
   const loadSettings = async () => {
     try {
@@ -43,23 +53,29 @@ export function SettingsDialog() {
   }
 
   const saveSettings = async () => {
-    if (!apiKeys.anthropicApiKey) {
-      setSaveStatus('error')
-      return
-    }
-
     setIsLoading(true)
     setSaveStatus('saving')
     
     try {
       const settings: AppSettings = {
-        apiKeys,
+        apiKeys: {
+          anthropicApiKey: apiKeys.anthropicApiKey || ''
+        },
         theme,
         features: featureStates
       }
       
       const result = await window.electronAPI.settings.save(settings)
       if (result.success) {
+        if (apiKeys.anthropicApiKey) {
+          const initResult = await window.electronAPI.ai.initialize({})
+          if (initResult.success) {
+            console.log('🔧 AI Agent reinitialized with new API key')
+            window.dispatchEvent(new CustomEvent('ai-reinitialized'))
+          } else {
+            console.error('Failed to reinitialize AI agent:', initResult.error)
+          }
+        }
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
@@ -84,10 +100,32 @@ export function SettingsDialog() {
     }))
   }
 
+  const handleDeleteApiKey = async () => {
+    setApiKeys(prev => ({
+      ...prev,
+      anthropicApiKey: ''
+    }))
+    
+    try {
+      const settings: AppSettings = {
+        apiKeys: { anthropicApiKey: '' },
+        theme,
+        features: featureStates
+      }
+      
+      const result = await window.electronAPI.settings.save(settings)
+      if (result.success) {
+        console.log('🔧 API key deleted from settings')
+      }
+    } catch (error) {
+      console.error('Failed to delete API key:', error)
+    }
+  }
+
   const isAnthropicRequired = !apiKeys.anthropicApiKey
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
           <MoreHorizontal className="h-4 w-4" />
@@ -119,15 +157,18 @@ export function SettingsDialog() {
                 </div>
                 <div className="flex gap-2 items-center mt-3">
                   <Input
+                    ref={inputRef}
                     type="password"
                     placeholder="sk-ant-..."
                     value={apiKeys.anthropicApiKey || ''}
                     onChange={(e) => handleApiKeyChange('anthropicApiKey', e.target.value)}
                     className="flex-1"
+                    autoFocus={false}
+                    tabIndex={-1}
                   />
                   <Button 
                     onClick={saveSettings} 
-                    disabled={isLoading || isAnthropicRequired}
+                    disabled={isLoading}
                     variant={saveStatus === 'saved' ? 'default' : 'outline'}
                     size="sm"
                   >
@@ -135,7 +176,7 @@ export function SettingsDialog() {
                   </Button>
                   {apiKeys.anthropicApiKey && (
                     <Button 
-                      onClick={() => handleApiKeyChange('anthropicApiKey', '')}
+                      onClick={handleDeleteApiKey}
                       variant="outline"
                       size="sm"
                     >

@@ -1,6 +1,6 @@
 import React from 'react'
-import { ClaudeEvent } from '@/lib/ai/agent/types'
-import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/ai/agent/logger'
+import { ClaudeEvent } from '@/lib/agent/types'
+import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/agent/logger'
 
 export interface AgentLogToolsViewProps {
   events: ClaudeEvent[]

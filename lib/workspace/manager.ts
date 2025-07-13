@@ -182,7 +182,7 @@ export class WorkspaceManager {
     return this.getAllFilesRecursive(dir, this.workspacePath, false)
   }
 
-  async applyChanges(): Promise<void> {
+  async applyChanges(): Promise<number> {
     const changedFiles = await this.getChangedFiles()
     
     if (changedFiles.length > 0) {
@@ -198,6 +198,8 @@ export class WorkspaceManager {
       await fs.mkdir(resolve(originalFile, '..'), { recursive: true })
       await fs.copyFile(workspaceFile, originalFile)
     }
+    
+    return changedFiles.length
   }
 
   async cleanup(): Promise<void> {

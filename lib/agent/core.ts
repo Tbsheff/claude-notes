@@ -89,12 +89,16 @@ export class ClaudeCodeAgent {
       }
 
       console.log('📋 Applying changes to main codebase...')
-      await manager.applyChanges()
+      const changedFilesCount = await manager.applyChanges()
 
       const response = this.extractResponse(messages)
       
       console.log('✅ Workspace processing completed successfully!')
       ClaudeCodeLogger.logComplete()
+      
+      if (workspaceResult) {
+        workspaceResult.changedFilesCount = changedFilesCount
+      }
       
       return { 
         success: true, 

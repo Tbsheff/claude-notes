@@ -131,31 +131,62 @@ COMPONENT MODIFICATION RULES (CRITICAL):
 ## Current Project Structure
 
 ### Main Application Structure
-- app/modules/editor/ - Main editor module containing all editor-related code
-  - pages/editor-page.tsx - Main editor page with textarea, handles content state
-  - components/ - UI components for editor interface
+- app/modules/editor/ - Main editor module
+  - pages/editor-page.tsx - Main editor page with content state and AI integration
+  - components/ - Editor UI components
   - features/ - Feature system with registry and manager
+  - api/ - Editor API and types
+- app/modules/agent/ - AI agent components  
+  - components/ - Agent UI components (log popover, message display, tool actions)
+  - api/ - Agent types and utilities
+- app/modules/general/ - General app components
+  - components/ - App sidebar and general utilities
+  - api/ - General API functions
 
 ### UI Components (USE EXISTING ONES!)
-CRITICAL: Always use existing components from components/ui/ instead of creating new ones. The project has a full ShadCN UI library available - use these components for all UI needs.
+CRITICAL: Always use existing components from components/ui/ instead of creating new ones. 
+Available: button, input, dialog, popover, sidebar, badge, alert, scroll-area, tabs, etc.
 
 ### Editor Components (DO NOT MODIFY STRUCTURE!)
 app/modules/editor/components/:
-- note-editor-header.tsx – Top header
-- note-editor-footer.tsx – Bottom footer
-- selection-toolbar.tsx – Context menu for text selection
-- settings-dialog.tsx – Settings modal with theme and feature toggles
+- editor-header.tsx – Top header with export and settings
+- editor-footer.tsx – Bottom footer with word count and features
+- editor.tsx – Main contentEditable editor
+- editor-toolbar.tsx – Selection toolbar with AI features
+- editor-settings-dialog.tsx – Settings modal for API keys, theme, features
+
+### Agent Components
+app/modules/agent/components/:
+- agent-log-popover.tsx – Shows agent activity during builds
+- agent-log-view.tsx – Displays agent events and tool actions
+- agent-message.tsx – Formats agent messages with markdown
+- tool-actions.tsx – Shows individual tool actions
 
 ### Features Architecture
 app/modules/editor/features/:
 ├── feature-manager.ts – Central feature state management
-├── registry.ts – Feature registration
+├── registry.ts – Feature registration system
 ├── ai-text-editor/ – AI text improvement (core.tsx, index.tsx, types.ts, prompts.ts)
 └── show-word-count/ – Word statistics display (core.tsx, index.tsx, types.ts)
 
+### Backend Libraries
+lib/agent/ - AI agent system:
+├── core.ts – ClaudeCodeAgent with workspace processing
+├── logger.ts – Event logging and processing
+├── main-prompt.ts – This system prompt
+└── types.ts – Agent types and interfaces
+
+lib/llm/ - LLM integration:
+├── core.ts – llmCall function for Anthropic API
+└── types.ts – LLM types
+
+lib/workspace/ - Workspace management:
+├── manager.ts – Workspace creation, validation, and file management
+└── validator.ts – Code validation (TypeScript, ESLint, build)
+
 ### LLM Integration (MANDATORY!)
-// lib/ai/core.ts - ONLY way to call AI
-import { llmCall } from '@/lib/ai/core'
+// lib/llm/core.ts - ONLY way to call AI
+import { llmCall } from '@/lib/llm/core'
 
 const response = await llmCall([
   { role: 'system', content: 'Your system prompt' },
@@ -167,6 +198,11 @@ else console.error(response.error)
 
 // Via Electron API in components:
 const response = await window.electronAPI.llmCall(messages, model)
+
+### AI Agent Integration (CRITICAL!)
+// Main AI agent for code changes:
+const response = await window.electronAPI.ai.processRequest(selectedText)
+// This uses workspace isolation, validation, and safe file application
 
 ### Feature Manager Usage (MANDATORY!)
 // Usage in components:
@@ -205,9 +241,10 @@ return <div>{feature.renderWords()}</div>  // <- ONLY THIS!
 NEVER put feature logic directly in components - always use render methods!
 
 ### Workspace Mode (ALL AI requests!)
-– All AI changes go through workspace validation
+– All AI changes go through workspace validation (lib/workspace/manager.ts)
 – Only successfully validated files are applied to repository
-– DO NOT use direct edits – only through processRequestWorkspace 
+– Files are copied to isolated workspace, modified, validated, then applied
+– If validation fails, changes are discarded and not applied 
 `
 
 export function createWorkspacePrompt(workspacePath: string): string {

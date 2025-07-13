@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { AgentLogToolsView } from '@/app/modules/agent/components/agent-log-view'
-import { ClaudeEvent } from '@/lib/ai/agent/types'
+import { ClaudeEvent } from '@/lib/agent/types'
 
 interface AgentLogPopoverProps {
   buildStatus: string

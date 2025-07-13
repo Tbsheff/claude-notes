@@ -35,8 +35,8 @@ export async function initializeAI(config: any = {}) {
   const apiKey = stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY || config.apiKey
   if (!apiKey) return { success: false, error: 'Anthropic API key not found. Please configure it in Settings.' }
   try {
-    const { ClaudeCodeAgent } = await import('../../lib/ai/agent/core')
-    const { ClaudeCodeLogger } = await import('../../lib/ai/agent/logger')
+    const { ClaudeCodeAgent } = await import('../../lib/agent/core')
+    const { ClaudeCodeLogger } = await import('../../lib/agent/logger')
     ClaudeCodeLogger.setEventCallback((event) => {
       mainWindow?.webContents.send('claude-event', event)
     })
@@ -63,7 +63,9 @@ export async function processRequest(message: string, rebuildCallback: () => voi
     const result = await aiAgent.processRequest(message, workspaceConfig)
     _claudeIsWorking = false
     if (result.success) {
-      setTimeout(() => rebuildCallback(), 500)
+      if (result.workspaceResult && result.workspaceResult.changedFilesCount && result.workspaceResult.changedFilesCount > 0) {
+        setTimeout(() => rebuildCallback(), 500)
+      }
       return { success: true, response: result.response, workspaceResult: result.workspaceResult }
     }
     return result

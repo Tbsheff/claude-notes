@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download } from 'lucide-react'
+import { Download, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './editor-settings-dialog'
@@ -14,6 +14,8 @@ interface NoteEditorHeaderProps {
 
 export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }: NoteEditorHeaderProps) {
   const [currentTime, setCurrentTime] = React.useState(new Date())
+  
+  console.log('🎯 Header render - isBuilding:', isBuilding, 'buildStatus:', buildStatus)
   
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -42,9 +44,9 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
 
   return (
     <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-background">
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground">
-          {createdAt.toLocaleDateString('en-US', { 
+          📅 {createdAt.toLocaleDateString('en-US', { 
             weekday: 'long', 
             month: 'long', 
             day: 'numeric' 

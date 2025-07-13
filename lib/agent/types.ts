@@ -27,6 +27,7 @@ export interface WorkspaceResult {
   workspacePath?: string
   error?: string
   validationResult?: ValidationResult
+  changedFilesCount?: number
 }
 
 export interface ValidationResult {

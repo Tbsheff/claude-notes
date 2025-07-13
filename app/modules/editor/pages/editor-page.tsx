@@ -102,19 +102,31 @@ function EditorContent() {
   }
 
   const handleBuild = async (selectedText: string) => {
+    console.log('🔧 Build triggered with text:', selectedText.substring(0, 50) + '...')
+    console.log('🔧 AI initialized:', aiInitialized)
+    console.log('🔧 Electron API available:', !!window.electronAPI?.ai)
+    
     if (!aiInitialized) return
     if (!selectedText.trim()) return
     if (!window.electronAPI?.ai) {
       alert('Electron API not available')
       return
     }
+    console.log('🔧 Setting isBuilding to true')
     setIsBuilding(true)
     setBuildStatus('Building...')
     try {
+      console.log('🔧 Calling AI processRequest...')
       const res = await window.electronAPI.ai.processRequest(selectedText)
+      console.log('🔧 AI response:', res)
       if (res.success) {
-        setBuildStatus('Changes applied, reloading...')
-        setTimeout(() => setIsBuilding(false), 3000)
+        if (res.workspaceResult && res.workspaceResult.changedFilesCount === 0) {
+          setBuildStatus('No files were changed.')
+          setTimeout(() => setIsBuilding(false), 2000)
+        } else {
+          setBuildStatus('Changes applied, reloading...')
+          setTimeout(() => setIsBuilding(false), 3000)
+        }
       } else {
         console.error('AI error:', res.error)
         alert('AI error: ' + res.error)
@@ -144,8 +156,20 @@ function EditorContent() {
         await createNewNote()
       }
     }
+    
+    const handleAIReinitialized = () => {
+      setAiInitialized(true)
+      console.log('🔧 AI state updated after reinitialization')
+    }
+    
     initAI()
     loadInitial()
+    
+    window.addEventListener('ai-reinitialized', handleAIReinitialized)
+    
+    return () => {
+      window.removeEventListener('ai-reinitialized', handleAIReinitialized)
+    }
   }, [])
 
   useEffect(() => {
