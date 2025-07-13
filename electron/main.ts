@@ -1,5 +1,3 @@
-require('dotenv').config({ path: '.env.local' })
-
 const { app, BrowserWindow } = require('electron')
 const path = require('path')
 

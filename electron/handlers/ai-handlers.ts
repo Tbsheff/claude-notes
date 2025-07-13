@@ -19,13 +19,30 @@ export function setMainWindow(window: any) {
   mainWindow = window
 }
 
+async function getStoredApiKeys() {
+  try {
+    const { getSettingsPath } = await import('../utils/notes-helpers')
+    const fs = require('fs')
+    const settingsPath = getSettingsPath()
+    
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+      return { anthropicApiKey: settings.apiKeys?.anthropicApiKey || '' }
+    }
+  } catch (error) {
+    console.error('Failed to load stored API keys:', error)
+  }
+  return { anthropicApiKey: '' }
+}
+
 export function setupAIHandlers(rebuildCallback: () => void) {
   ipcMain.handle('ai:initialize', async (event, config = {}) => {
     try {
-      const apiKey = process.env.ANTHROPIC_API_KEY || (config as any).apiKey
+      const storedKeys = await getStoredApiKeys()
+      const apiKey = storedKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY || (config as any).apiKey
       
       if (!apiKey) {
-        const error = 'Anthropic API key not found in environment variables or config'
+        const error = 'Anthropic API key not found. Please configure it in Settings.'
         throw new Error(error)
       }
       
@@ -98,8 +115,9 @@ export function setupAIHandlers(rebuildCallback: () => void) {
 
   ipcMain.handle('llm:call', async (event, messages, model) => {
     try {
+      const storedKeys = await getStoredApiKeys()
       const { llmCall } = await import('../../lib/ai/core')
-      return await llmCall(messages, model)
+      return await llmCall(messages, model, storedKeys)
     } catch (error) {
       return { 
         success: false, 

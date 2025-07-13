@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NoteEditorHeader } from '../components/note-editor-header'
 import { NoteEditorFooter } from '../components/note-editor-footer'
 import { SelectionToolbar } from '../components/selection-toolbar'
-import { NotesSidebar } from '../components/note-sidebar'
+import { NotesSidebar } from '../../general/components/app-sidebar'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { editorApi } from '../api'
 import { Note } from '@/types/electron'
@@ -49,9 +49,17 @@ export function EditorPage() {
       .replace(/<br\/>/g, '\n')
       .replace(/&nbsp;/g, ' ')
     
-    // Handle lists
+    // Handle bullet lists
     result = result.replace(/<ul>(.*?)<\/ul>/gs, (match, content) => {
       return content.replace(/<li>(.*?)<\/li>/g, '- $1\n').trim()
+    })
+    
+    // Handle numbered lists
+    result = result.replace(/<ol>(.*?)<\/ol>/gs, (match, content) => {
+      let counter = 1
+      return content.replace(/<li>(.*?)<\/li>/g, () => {
+        return `${counter++}. $1\n`
+      }).trim()
     })
     
     return result.trim()
@@ -71,29 +79,52 @@ export function EditorPage() {
     // Handle lists
     const lines = result.split('\n')
     const processedLines: string[] = []
-    let inList = false
+    let inBulletList = false
+    let inNumberedList = false
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
-      const isListItem = line.match(/^[-*] (.*)$/)
+      const isBulletItem = line.match(/^[-*] (.*)$/)
+      const isNumberedItem = line.match(/^\d+\. (.*)$/)
       
-      if (isListItem) {
-        if (!inList) {
-          processedLines.push('<ul>')
-          inList = true
+      if (isBulletItem) {
+        if (inNumberedList) {
+          processedLines.push('</ol>')
+          inNumberedList = false
         }
-        processedLines.push(`<li>${isListItem[1]}</li>`)
-      } else {
-        if (inList) {
+        if (!inBulletList) {
+          processedLines.push('<ul>')
+          inBulletList = true
+        }
+        processedLines.push(`<li>${isBulletItem[1]}</li>`)
+      } else if (isNumberedItem) {
+        if (inBulletList) {
           processedLines.push('</ul>')
-          inList = false
+          inBulletList = false
+        }
+        if (!inNumberedList) {
+          processedLines.push('<ol>')
+          inNumberedList = true
+        }
+        processedLines.push(`<li>${isNumberedItem[1]}</li>`)
+      } else {
+        if (inBulletList) {
+          processedLines.push('</ul>')
+          inBulletList = false
+        }
+        if (inNumberedList) {
+          processedLines.push('</ol>')
+          inNumberedList = false
         }
         processedLines.push(line)
       }
     }
     
-    if (inList) {
+    if (inBulletList) {
       processedLines.push('</ul>')
+    }
+    if (inNumberedList) {
+      processedLines.push('</ol>')
     }
     
     return processedLines.join('\n').replace(/\n/g, '<br>')
@@ -231,86 +262,155 @@ export function EditorPage() {
       const selection = window.getSelection()
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0)
-        const currentNode = range.startContainer
         
-        if (currentNode.nodeType === Node.TEXT_NODE) {
-          const text = currentNode.textContent || ''
-          const offset = range.startOffset
+        // Get the current line text more reliably
+        const getCurrentLineText = () => {
+          const container = range.startContainer
+          let lineText = ''
           
-          // Get text from start of line to cursor
-          const beforeCursor = text.substring(0, offset)
-          const lines = beforeCursor.split('\n')
-          const currentLine = lines[lines.length - 1]
-          
-          // Check for header patterns
-          const headerMatch = currentLine.match(/^(#{1,6})$/)
-          if (headerMatch) {
-            e.preventDefault()
-            const level = headerMatch[1].length
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent || ''
+            const offset = range.startOffset
             
-            // Replace the # pattern with header
-            const newRange = document.createRange()
-            newRange.setStart(currentNode, offset - level)
-            newRange.setEnd(currentNode, offset)
-            newRange.deleteContents()
-            
-            // Create header element
-            const headerElement = document.createElement(`h${level}`)
-            headerElement.textContent = ''
-            newRange.insertNode(headerElement)
-            
-            // Set cursor inside header
-            const newSelection = window.getSelection()
-            newSelection?.removeAllRanges()
-            const cursorRange = document.createRange()
-            cursorRange.selectNodeContents(headerElement)
-            cursorRange.collapse(false)
-            newSelection?.addRange(cursorRange)
-            
-            // Update content
-            setContent(editorRef.current.innerHTML)
-          }
-          
-          // Check for bullet point patterns
-          const bulletMatch = currentLine.match(/^(-|\*)$/)
-          if (bulletMatch) {
-            e.preventDefault()
-            
-            // Replace the - or * pattern with list item
-            const newRange = document.createRange()
-            newRange.setStart(currentNode, offset - 1)
-            newRange.setEnd(currentNode, offset)
-            newRange.deleteContents()
-            
-            // Create list item element
-            const listItem = document.createElement('li')
-            listItem.textContent = ''
-            
-            // Check if we're already in a list
-            const parentList = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE ? 
-              (range.commonAncestorContainer as Element).closest('ul') : null
-            
-            if (parentList) {
-              // Add to existing list
-              newRange.insertNode(listItem)
-            } else {
-              // Create new list
-              const ul = document.createElement('ul')
-              ul.appendChild(listItem)
-              newRange.insertNode(ul)
+            // Find the start of current line
+            let lineStart = 0
+            for (let i = offset - 1; i >= 0; i--) {
+              if (text[i] === '\n') {
+                lineStart = i + 1
+                break
+              }
             }
             
-            // Set cursor inside list item
+            lineText = text.substring(lineStart, offset)
+          } else if (container.nodeType === Node.ELEMENT_NODE) {
+            // If we're in an element, get its text content
+            const element = container as Element
+            lineText = element.textContent || ''
+          }
+          
+          return lineText.trim()
+        }
+        
+        const currentLineText = getCurrentLineText()
+        console.log('Current line text:', `"${currentLineText}"`)
+        
+        // Check for header patterns (# ## ### etc.)
+        const headerMatch = currentLineText.match(/^(#{1,6})$/)
+        if (headerMatch) {
+          e.preventDefault()
+          const level = headerMatch[1].length
+          console.log('Header detected, level:', level)
+          
+          // Select the # symbols to replace them
+          const container = range.startContainer
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent || ''
+            const offset = range.startOffset
+            
+            // Find line boundaries
+            let lineStart = 0
+            for (let i = offset - 1; i >= 0; i--) {
+              if (text[i] === '\n') {
+                lineStart = i + 1
+                break
+              }
+            }
+            
+            // Select the # symbols
             const newSelection = window.getSelection()
             newSelection?.removeAllRanges()
-            const cursorRange = document.createRange()
-            cursorRange.selectNodeContents(listItem)
-            cursorRange.collapse(false)
-            newSelection?.addRange(cursorRange)
+            const selectRange = document.createRange()
+            selectRange.setStart(container, lineStart)
+            selectRange.setEnd(container, offset)
+            newSelection?.addRange(selectRange)
             
-            // Update content
+            // First delete the # symbols
+            document.execCommand('delete', false)
+            
+            // Then create header
+            document.execCommand('formatBlock', false, `H${level}`)
+            
             setContent(editorRef.current.innerHTML)
           }
+          return
+        }
+        
+        // Check for bullet point patterns (- or *)
+        const bulletMatch = currentLineText.match(/^(-|\*)$/)
+        if (bulletMatch) {
+          e.preventDefault()
+          console.log('Bullet detected')
+          
+          const container = range.startContainer
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent || ''
+            const offset = range.startOffset
+            
+            // Find line boundaries
+            let lineStart = 0
+            for (let i = offset - 1; i >= 0; i--) {
+              if (text[i] === '\n') {
+                lineStart = i + 1
+                break
+              }
+            }
+            
+            // Select the bullet symbol
+            const newSelection = window.getSelection()
+            newSelection?.removeAllRanges()
+            const selectRange = document.createRange()
+            selectRange.setStart(container, lineStart)
+            selectRange.setEnd(container, offset)
+            newSelection?.addRange(selectRange)
+            
+            // First delete the bullet symbol
+            document.execCommand('delete', false)
+            
+            // Then create list
+            document.execCommand('insertUnorderedList', false)
+            
+            setContent(editorRef.current.innerHTML)
+          }
+          return
+        }
+        
+        // Check for numbered list patterns (1. 2. etc.)
+        const numberedMatch = currentLineText.match(/^(\d+\.)$/)
+        if (numberedMatch) {
+          e.preventDefault()
+          console.log('Numbered list detected')
+          
+          const container = range.startContainer
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent || ''
+            const offset = range.startOffset
+            
+            // Find line boundaries
+            let lineStart = 0
+            for (let i = offset - 1; i >= 0; i--) {
+              if (text[i] === '\n') {
+                lineStart = i + 1
+                break
+              }
+            }
+            
+            // Select the number and dot
+            const newSelection = window.getSelection()
+            newSelection?.removeAllRanges()
+            const selectRange = document.createRange()
+            selectRange.setStart(container, lineStart)
+            selectRange.setEnd(container, offset)
+            newSelection?.addRange(selectRange)
+            
+            // First delete the number and dot
+            document.execCommand('delete', false)
+            
+            // Then create numbered list
+            document.execCommand('insertOrderedList', false)
+            
+            setContent(editorRef.current.innerHTML)
+          }
+          return
         }
       }
     }
@@ -444,7 +544,7 @@ export function EditorPage() {
               suppressContentEditableWarning={true}
               onInput={handleContentInput}
               onKeyDown={handleKeyDown}
-              className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed empty:before:content-['Start_writing...'] empty:before:text-muted-foreground [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5 [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4 [&_h4]:text-lg [&_h4]:font-medium [&_h4]:mb-2 [&_h4]:mt-3 [&_h5]:text-base [&_h5]:font-medium [&_h5]:mb-1 [&_h5]:mt-2 [&_h6]:text-sm [&_h6]:font-medium [&_h6]:mb-1 [&_h6]:mt-2 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:my-2 [&_li]:mb-1"
+              className="w-full h-full resize-none border-none shadow-none p-6 bg-background text-foreground focus:outline-none text-base leading-relaxed empty:before:content-['Start_writing...'] empty:before:text-muted-foreground [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5 [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4 [&_h4]:text-lg [&_h4]:font-medium [&_h4]:mb-2 [&_h4]:mt-3 [&_h5]:text-base [&_h5]:font-medium [&_h5]:mb-1 [&_h5]:mt-2 [&_h6]:text-sm [&_h6]:font-medium [&_h6]:mb-1 [&_h6]:mt-2 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:my-2 [&_ul]:pl-6 [&_li]:mb-1 [&_ol]:list-decimal [&_ol]:list-outside [&_ol]:my-2 [&_ol]:pl-6"
               style={{ fontFamily: 'Manrope, sans-serif' }}
             />
             

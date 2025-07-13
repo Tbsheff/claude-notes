@@ -1,5 +1,5 @@
 import React from 'react'
-import { Zap, Bold, Italic, Underline, Copy, Scissors, Sparkles, Wrench, Loader2, Heading1, Heading2, Heading3, List } from 'lucide-react'
+import { Zap, Bold, Italic, Underline, Copy, Scissors, Sparkles, Wrench, Loader2, Heading1, Heading2, Heading3, List, ListOrdered } from 'lucide-react'
 import { useAITextEditor } from '../features/ai-text-editor'
 
 interface SelectionToolbarProps {
@@ -75,6 +75,9 @@ export function SelectionToolbar({ children, content, setContent, editorRef, onB
         break
       case 'bulletlist':
         document.execCommand('insertUnorderedList', false)
+        break
+      case 'numberedlist':
+        document.execCommand('insertOrderedList', false)
         break
       case 'copy':
         document.execCommand('copy', false)
@@ -243,6 +246,14 @@ export function SelectionToolbar({ children, content, setContent, editorRef, onB
           >
             <List className="h-4 w-4" />
             Bullet List
+          </div>
+          
+          <div 
+            onClick={() => handleFormat('numberedlist')}
+            className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <ListOrdered className="h-4 w-4" />
+            Numbered List
           </div>
           
           <div className="bg-border -mx-1 my-1 h-px" />

@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -119,17 +118,8 @@
   }
   html {
     scroll-behavior: smooth;
-    height: 100vh;
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Manrope', sans-serif;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-  #root {
-    height: 100vh;
   }
 }

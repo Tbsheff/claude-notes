@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     reloadWindow: () => ipcRenderer.invoke('app:reloadWindow'),
     rebuildAndReload: () => ipcRenderer.invoke('app:rebuildAndReload')
   },
+  general: {
+    exportWorkspace: () => ipcRenderer.invoke('general:exportWorkspace'),
+    resetFeatures: (repoUrl) => ipcRenderer.invoke('general:resetFeatures', repoUrl)
+  },
   ipcRenderer: {
     on: (channel, listener) => ipcRenderer.on(channel, listener),
     removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener)

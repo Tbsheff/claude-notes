@@ -8,8 +8,7 @@ import {
   createMarkdown,
   createNoteFromMarkdown,
   loadIndex,
-  saveIndex,
-  getSettingsPath
+  saveIndex
 } from '../utils/notes-helpers'
 
 export function setupNoteStorageHandlers() {
@@ -119,31 +118,6 @@ export function setupNoteStorageHandlers() {
       saveIndex(index)
       
       return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
-
-  ipcMain.handle('settings:save', async (event, settings: any) => {
-    try {
-      const settingsPath = getSettingsPath()
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  })
-
-  ipcMain.handle('settings:load', async () => {
-    try {
-      const settingsPath = getSettingsPath()
-      
-      if (!fs.existsSync(settingsPath)) {
-        return { success: false, error: 'Settings not found' }
-      }
-      
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-      return { success: true, settings }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }

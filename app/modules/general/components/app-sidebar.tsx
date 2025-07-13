@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, FileText, MoreHorizontal } from 'lucide-react'
+import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2 } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { editorApi } from '../api'
+import { Button } from '@/components/ui/button'
+import { editorApi } from '../../editor/api'
+import { generalApi } from '../api'
 import { Note } from '@/types/electron'
 
 interface NotesSidebarProps {
@@ -37,6 +39,8 @@ export function NotesSidebar({
 }: NotesSidebarProps) {
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
 
   useEffect(() => {
     loadNotes()
@@ -77,6 +81,42 @@ export function NotesSidebar({
       await loadNotes()
     } catch (error) {
       console.error('Failed to create note:', error)
+    }
+  }
+
+  const handleExportWorkspace = async () => {
+    setIsExporting(true)
+    try {
+      const result = await generalApi.exportWorkspace()
+      if (result.success) {
+        console.log('Workspace exported successfully')
+      } else {
+        console.error('Failed to export workspace:', result.error)
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleResetFeatures = async () => {
+    if (!confirm('Are you sure you want to reset all features? This will pull from the repo and rebuild the app.')) {
+      return
+    }
+    
+    setIsResetting(true)
+    try {
+      const result = await generalApi.resetFeatures('https://github.com/diko0071/ai-editor')
+      if (result.success) {
+        console.log('Features reset successfully')
+      } else {
+        console.error('Failed to reset features:', result.error)
+      }
+    } catch (error) {
+      console.error('Reset failed:', error)
+    } finally {
+      setIsResetting(false)
     }
   }
 
@@ -141,6 +181,42 @@ export function NotesSidebar({
                 ))
               )}
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <div className="space-y-2 p-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportWorkspace}
+                disabled={isExporting}
+                className="w-full justify-start"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Export Workspace
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetFeatures}
+                disabled={isResetting}
+                className="w-full justify-start"
+              >
+                {isResetting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4" />
+                )}
+                Reset All Features
+              </Button>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

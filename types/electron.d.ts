@@ -6,6 +6,16 @@ export interface Note {
   updatedAt: string;
 }
 
+export interface APIKeysSettings {
+  anthropicApiKey?: string;
+}
+
+export interface AppSettings {
+  apiKeys: APIKeysSettings;
+  theme?: 'light' | 'dark';
+  features?: Record<string, boolean>;
+}
+
 export interface ElectronAPI {
   openFile: () => Promise<string | undefined>;
   saveFile: (content: string) => Promise<boolean>;
@@ -23,12 +33,16 @@ export interface ElectronAPI {
     delete: (noteId: string) => Promise<{ success: boolean, error?: string }>;
   };
   settings: {
-    save: (settings: any) => Promise<{ success: boolean, error?: string }>;
-    load: () => Promise<{ success: boolean, settings?: any, error?: string }>;
+    save: (settings: AppSettings) => Promise<{ success: boolean, error?: string }>;
+    load: () => Promise<{ success: boolean, settings?: AppSettings, error?: string }>;
   };
   app: {
     reloadWindow: () => Promise<void>;
     rebuildAndReload: () => Promise<{ success: boolean; error?: string }>;
+  };
+  general: {
+    exportWorkspace: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
+    resetFeatures: (repoUrl: string) => Promise<{ success: boolean; error?: string }>;
   };
   ipcRenderer: {
     on: (channel: string, listener: (event: any, ...args: any[]) => void) => void;
