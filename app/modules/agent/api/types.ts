@@ -1,6 +1,7 @@
 import React from 'react'
 import { ClaudeEvent } from '@/lib/tools/claude-code/types'
 import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/tools/claude-code/logger'
+import { UnifiedMessage } from '@/lib/agent/types'
 
 export interface ChatMessage {
   id: string
@@ -18,20 +19,6 @@ export interface ChatMessage {
       result?: any
     }
   }>
-}
-
-export interface MessagePart {
-  type: 'text' | 'tool-invocation'
-  text?: string
-  toolInvocation?: ToolInvocation
-}
-
-export interface ToolInvocation {
-  toolName: string
-  toolCallId: string
-  state: 'call' | 'result'
-  args?: Record<string, any>
-  result?: any
 }
 
 export interface AgentChatProps {
@@ -55,8 +42,7 @@ export interface AgentMessageProps {
 }
 
 export interface ChatMessageProps {
-  message: ChatMessage
-  claudeCodeLogs?: Record<string, string[]>
+  message: UnifiedMessage
 }
 
 export interface TreeToolActionProps {

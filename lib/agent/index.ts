@@ -24,4 +24,7 @@ export function createAgentStream(messages: any[], options: any = {}) {
   })
 }
 
-export { claudeCodeTool } from '../tools/claude-code' 
+export { claudeCodeTool } from '../tools/claude-code'
+export { MessageParser } from './message-parser'
+export { StreamHandler } from './stream-handler'
+export * from './types' 

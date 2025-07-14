@@ -4,26 +4,52 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
 import { CollapsibleTool } from './tools/collapsible-tool'
+import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
 import equal from 'fast-deep-equal'
 
-const renderToolResult = (toolName: string, result: any, toolCallId?: string, claudeCodeLogs?: Record<string, string[]>) => {
+const renderTextBlock = (block: TextBlock, isUser: boolean) => {
+  return (
+    <div
+      className={cn(
+        "px-3 py-2 rounded-2xl text-sm break-words",
+        isUser
+          ? "bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto"
+          : "bg-muted max-w-lg md:max-w-2xl",
+      )}
+    >
+      {block.data.text}
+    </div>
+  )
+}
+
+const renderToolBlock = (block: ToolBlock) => {
+  const { toolName, toolCallId, args, result, logs } = block.data
+  const isExecuting = block.status === 'executing'
+  const isCompleted = block.status === 'completed'
+  
   if (toolName === 'claude-code') {
-    const logs = claudeCodeLogs?.[toolCallId || ''] || []
     return (
       <div className="w-full max-w-lg md:max-w-2xl">
         <CollapsibleTool 
-          title="Claude Code"
+          title={isExecuting ? "Running Claude Code" : "Claude Code"}
           icon={<SparklesIcon size={16} />}
-          dataTestId="claude-code-completed"
+          dataTestId={isExecuting ? "claude-code-executing" : "claude-code-completed"}
         >
           <div className="space-y-2">
-            <div className="text-sm text-green-600">
-              {result.message || 'Task completed successfully'}
-            </div>
-            {logs.length > 0 && (
+            {isExecuting && (
+              <div className="text-sm text-muted-foreground">
+                Executing: {args?.task || 'Unknown task'}
+              </div>
+            )}
+            {isCompleted && (
+              <div className="text-sm text-green-600">
+                {result?.message || 'Task completed successfully'}
+              </div>
+            )}
+            {logs && logs.length > 0 && (
               <div className="border-t border-border pt-2">
                 <div className="text-xs text-muted-foreground space-y-1">
-                  {logs.map((log, index) => (
+                  {logs.map((log: string, index: number) => (
                     <div key={index} className="font-mono">{log}</div>
                   ))}
                 </div>
@@ -36,118 +62,85 @@ const renderToolResult = (toolName: string, result: any, toolCallId?: string, cl
   }
   
   return (
-    <div className="p-3 rounded-lg bg-muted/50 border border-border">
-      <div className="text-sm font-medium mb-1">{toolName}</div>
-      <div className="text-xs text-muted-foreground">
-        {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-      </div>
+    <div className="w-full max-w-lg md:max-w-2xl">
+      <CollapsibleTool 
+        title={isExecuting ? `Running ${toolName}` : toolName}
+        icon={<SparklesIcon size={16} />}
+        dataTestId={isExecuting ? `${toolName}-executing` : `${toolName}-completed`}
+      >
+        <div className="space-y-2">
+          {isExecuting && (
+            <div className="text-sm text-muted-foreground">
+              Executing tool...
+            </div>
+          )}
+          {isCompleted && result && (
+            <div className="text-sm text-muted-foreground">
+              {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+            </div>
+          )}
+        </div>
+      </CollapsibleTool>
     </div>
   )
 }
 
-const renderToolInvocation = (toolName: string, toolCallId: string, toolInvocation: any, claudeCodeLogs?: Record<string, string[]>) => {
-  const baseClassName = "w-full max-w-lg md:max-w-2xl"
-  
-  switch (toolName) {
-    case 'claude-code':
-      const toolLogs = claudeCodeLogs?.[toolCallId] || []
-      return (
-        <div key={toolCallId} className={baseClassName}>
-          <CollapsibleTool 
-            title="Running Claude Code"
-            icon={<SparklesIcon size={16} />}
-            dataTestId="claude-code-executing"
-          >
-            <div className="space-y-2">
-              <div className="text-sm text-muted-foreground">
-                Executing: {toolInvocation.args?.task || 'Unknown task'}
-              </div>
-              {toolLogs.length > 0 && (
-                <div className="border-t border-border pt-2">
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {toolLogs.map((log, index) => (
-                      <div key={index} className="font-mono">{log}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CollapsibleTool>
-        </div>
-      )
-    default:
-      return (
-        <div key={toolCallId} className={baseClassName}>
-          <CollapsibleTool 
-            title={`Running ${toolName}`}
-            icon={<SparklesIcon size={16} />}
-            dataTestId={`${toolName}-executing`}
-          >
-            <div className="text-sm text-muted-foreground">
-              Executing tool...
-            </div>
-          </CollapsibleTool>
-        </div>
-      )
-  }
+const renderThinkingBlock = (block: ThinkingBlock) => {
+  return (
+    <div className="p-3 rounded-2xl text-sm bg-muted text-muted-foreground">
+      {block.data.text}
+    </div>
+  )
 }
 
-const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, claudeCodeLogs }) => {
+const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user'
-
-  const renderTextContent = useCallback((text: string, key?: string) => {
-    return (
-      <div
-        key={key}
-        className={cn(
-          "px-3 py-2 rounded-2xl text-sm break-words",
-          isUser
-            ? "bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto"
-            : "bg-muted max-w-lg md:max-w-2xl",
-        )}
-      >
-        {text}
-      </div>
-    )
-  }, [isUser])
 
   const messageContent = useMemo(() => {
     const elements: React.ReactNode[] = []
 
-    if (message.content?.trim()) {
-      elements.push(renderTextContent(message.content, `message-${message.id}-content`))
+    if (message.content?.trim() && message.blocks.length === 0) {
+      elements.push(
+        <div
+          key={`message-${message.id}-content`}
+          className={cn(
+            "px-3 py-2 rounded-2xl text-sm break-words",
+            isUser
+              ? "bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto"
+              : "bg-muted max-w-lg md:max-w-2xl",
+          )}
+        >
+          {message.content}
+        </div>
+      )
     }
 
-    if (!message.parts || message.parts.length === 0) {
-      return elements
-    }
+    message.blocks.forEach((block, index) => {
+      const key = `message-${message.id}-block-${index}`
 
-    message.parts.forEach((part, index) => {
-      const key = `message-${message.id}-part-${index}`
-
-      if (part.type === 'text') {
-        elements.push(renderTextContent(part.text || '', key))
-        return
-      }
-
-      if (part.type === 'tool-invocation') {
-        const { toolInvocation } = part
-        const { toolName, toolCallId, state } = toolInvocation!
-
-        if (state === 'call') {
-          elements.push(renderToolInvocation(toolName, toolCallId, toolInvocation, claudeCodeLogs))
-          return
-        }
-
-        if (state === 'result') {
-          elements.push(renderToolResult(toolName, toolInvocation!.result, toolCallId, claudeCodeLogs))
-          return
-        }
+      if (block.type === 'text') {
+        elements.push(
+          <div key={key}>
+            {renderTextBlock(block as TextBlock, isUser)}
+          </div>
+        )
+      } else if (block.type === 'tool') {
+        elements.push(
+          <div key={key}>
+            {renderToolBlock(block as ToolBlock)}
+          </div>
+        )
+      } else if (block.type === 'thinking') {
+        elements.push(
+          <div key={key}>
+            {renderThinkingBlock(block as ThinkingBlock)}
+          </div>
+        )
       }
     })
 
     return elements
-  }, [message.parts, message.content, message.id, renderTextContent, claudeCodeLogs])
+  }, [message.blocks, message.content, message.id, isUser])
 
   return (
     <motion.div
@@ -178,12 +171,7 @@ export const ChatMessageComponent = memo(
     if (prevProps.message.id !== nextProps.message.id) return false
     if (prevProps.message.role !== nextProps.message.role) return false
     if (prevProps.message.content !== nextProps.message.content) return false
-    if (!equal(prevProps.message.parts, nextProps.message.parts)) return false
-    
-    // Сравниваем объекты claudeCodeLogs
-    const prevLogs = prevProps.claudeCodeLogs || {}
-    const nextLogs = nextProps.claudeCodeLogs || {}
-    if (!equal(prevLogs, nextLogs)) return false
+    if (!equal(prevProps.message.blocks, nextProps.message.blocks)) return false
     
     return true
   }
