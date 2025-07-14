@@ -1,6 +1,50 @@
 import React from 'react'
-import { ClaudeEvent } from '@/lib/agent/types'
-import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/agent/logger'
+import { ClaudeEvent } from '@/lib/tools/claude-code/types'
+import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/tools/claude-code/logger'
+
+export interface ChatMessage {
+  id: string
+  content: string
+  role: 'user' | 'assistant'
+  timestamp: Date
+  parts?: Array<{
+    type: string
+    text?: string
+    toolInvocation?: {
+      toolName: string
+      toolCallId: string
+      state: 'call' | 'result'
+      args?: any
+      result?: any
+    }
+  }>
+}
+
+export interface MessagePart {
+  type: 'text' | 'tool-invocation'
+  text?: string
+  toolInvocation?: ToolInvocation
+}
+
+export interface ToolInvocation {
+  toolName: string
+  toolCallId: string
+  state: 'call' | 'result'
+  args?: Record<string, any>
+  result?: any
+}
+
+export interface AgentChatProps {
+  isOpen: boolean
+  onToggle: () => void
+}
+
+export interface SessionState {
+  sessionId: string | null
+  hasFileChanges: boolean
+  canContinue: boolean
+  messages: ChatMessage[]
+}
 
 export interface AgentLogToolsViewProps {
   events: ClaudeEvent[]
@@ -8,6 +52,11 @@ export interface AgentLogToolsViewProps {
 
 export interface AgentMessageProps {
   event: ClaudeEvent
+}
+
+export interface ChatMessageProps {
+  message: ChatMessage
+  claudeCodeLogs?: Record<string, string[]>
 }
 
 export interface TreeToolActionProps {
@@ -30,23 +79,20 @@ export const getShortLabel = (label: string, content: string) => {
     case 'Edit':
       return `Modified ${getFileName(content)}`
     case 'Bash':
-      const cleanContent = cleanWorkspacePath(content)
-      return `Executed ${truncateCommand(cleanContent)}`
+      return `Run ${truncateCommand(content)}`
     case 'List':
-      return `Listed ${getDirName(content)}`
+      return `List ${getDirName(content)}`
     case 'Search':
-    case 'Find':
-      return 'Searched files'
-    case 'Tool':
-      if (content.includes('Grep:')) {
-        return 'Searched files'
-      }
-      return truncateCommand(content)
+      return `Search ${truncateCommand(content)}`
     case 'Grep':
-      return 'Searched files'
+      return `Grep ${truncateCommand(content)}`
     default:
-      return label
+      return content
   }
+}
+
+export const cleanWorkspacePathForDisplay = (path: string) => {
+  return cleanWorkspacePath(path)
 }
 
  

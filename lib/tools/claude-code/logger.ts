@@ -144,6 +144,10 @@ export class ClaudeCodeLogger {
     eventCallback = callback
   }
 
+  static getCurrentEventCallback() {
+    return eventCallback
+  }
+
   static emitEvent(event: Omit<ClaudeEvent, 'timestamp'>) {
     if (eventCallback) eventCallback({ ...event, timestamp: Date.now() })
   }

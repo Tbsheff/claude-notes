@@ -1,18 +1,18 @@
 import React from 'react'
-import { Download, Menu } from 'lucide-react'
+import { Download, Menu, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './editor-settings-dialog'
-import { AgentLogPopover } from '../../agent/components/agent-log-popover'
 
 interface NoteEditorHeaderProps {
   createdAt: Date
   isBuilding: boolean
   buildStatus: string
   content: string
+  onToggleChat: () => void
 }
 
-export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }: NoteEditorHeaderProps) {
+export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content, onToggleChat }: NoteEditorHeaderProps) {
   const [currentTime, setCurrentTime] = React.useState(new Date())
   
   console.log('🎯 Header render - isBuilding:', isBuilding, 'buildStatus:', buildStatus)
@@ -59,7 +59,7 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
       
       <div className="flex items-center space-x-4">
         {isBuilding ? (
-          <AgentLogPopover buildStatus={buildStatus} />
+          <BuildStatusBadge status="building">{buildStatus}</BuildStatusBadge>
         ) : buildStatus.includes('Changes applied') ? (
           <BuildStatusBadge status="success">{buildStatus}</BuildStatusBadge>
         ) : buildStatus === 'Reloading...' ? (
@@ -73,6 +73,15 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content }
           className="flex items-center"
         >
           <Download className="h-4 w-4" />
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleChat}
+          className="flex items-center"
+        >
+          <Sparkles className="h-4 w-4" />
         </Button>
         
         <SettingsDialog />

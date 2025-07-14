@@ -170,7 +170,7 @@ app/modules/editor/features/:
 └── show-word-count/ – Word statistics display (core.tsx, index.tsx, types.ts)
 
 ### Backend Libraries
-lib/agent/ - AI agent system:
+lib/tools/claude-code/ - Claude Code agent system:
 ├── core.ts – ClaudeCodeAgent with workspace processing
 ├── logger.ts – Event logging and processing
 ├── main-prompt.ts – This system prompt

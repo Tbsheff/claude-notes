@@ -2,7 +2,7 @@ import { promises as fs } from 'fs'
 import { join, resolve, relative, isAbsolute } from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import { WorkspaceConfig, WorkspaceResult } from '../agent/types'
+import { WorkspaceConfig, WorkspaceResult } from '../tools/claude-code/types'
 
 const execAsync = promisify(exec)
 

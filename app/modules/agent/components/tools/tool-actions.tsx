@@ -1,4 +1,4 @@
-import { TreeToolActionProps, CollapseToolActionProps, getShortLabel } from '../api/types'
+import { TreeToolActionProps, CollapseToolActionProps, getShortLabel } from '../../api/types'
 
 export const TreeToolAction = ({ event, icon, label }: TreeToolActionProps) => {
   const content = event.message.replace(`${label}: `, '')

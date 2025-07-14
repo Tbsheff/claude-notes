@@ -7,6 +7,7 @@ import { Editor } from '../components/editor'
 import { editorApi } from '../api'
 import { Note } from '@/app/modules/editor/api'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { AgentChat } from '@/app/modules/agent/components/agent-chat'
 
 function EditorContent() {
   const [content, setContent] = useState('')
@@ -17,8 +18,10 @@ function EditorContent() {
   const [createdAt] = useState(new Date())
   const [lastSavedContent, setLastSavedContent] = useState('')
   const [sidebarKey, setSidebarKey] = useState(0)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
+  const toggleChat = () => setIsChatOpen(!isChatOpen)
 
   const getPlainTextContent = () => content.replace(/<[^>]+>/g, ' ').trim()
   const getMarkdownContent = () => htmlToMarkdown(content)
@@ -195,10 +198,12 @@ function EditorContent() {
           isBuilding={isBuilding}
           buildStatus={buildStatus}
           content={getMarkdownContent()}
+          onToggleChat={toggleChat}
         />
         <Editor value={content} onChange={setContent} onBuild={handleBuild} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
+      <AgentChat isOpen={isChatOpen} onToggle={toggleChat} />
     </div>
   )
 }

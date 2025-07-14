@@ -3,8 +3,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
-import { AgentLogToolsView } from '@/app/modules/agent/components/agent-log-view'
-import { ClaudeEvent } from '@/lib/agent/types'
+import { ClaudeCodeToolView } from '@/app/modules/agent/components/tools/claude-code-tool-view'
+import { ClaudeEvent } from '@/lib/tools/claude-code/types'
 
 interface AgentLogPopoverProps {
   buildStatus: string
@@ -35,10 +35,12 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
       }
     }
 
-    window.electronAPI.ipcRenderer.on('claude-event', handleAgentEvent)
+    // @ts-ignore
+    window.claudeEvents?.on(handleAgentEvent)
 
     return () => {
-      window.electronAPI.ipcRenderer.removeListener('claude-event', handleAgentEvent)
+      // @ts-ignore
+      window.claudeEvents?.off(handleAgentEvent)
     }
   }, [])
 
@@ -54,7 +56,7 @@ export function AgentLogPopover({ buildStatus }: AgentLogPopoverProps) {
         </div>
         
         <ScrollArea className="h-80">
-          <AgentLogToolsView events={events} />
+          <ClaudeCodeToolView events={events} />
         </ScrollArea>
       </PopoverContent>
     </Popover>

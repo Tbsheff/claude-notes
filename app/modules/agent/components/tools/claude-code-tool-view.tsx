@@ -1,10 +1,8 @@
-
 import { FileText, Edit3, Search, FolderOpen, Code, Wrench, CheckSquare } from 'lucide-react'
 import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
-import { AgentMessage } from '@/app/modules/agent/components/agent-message'
-import { TreeToolAction, CollapseToolAction } from '@/app/modules/agent/components/tool-actions'
+import { TreeToolAction, CollapseToolAction } from './tool-actions'
 
-export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
+export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-gray-500">
@@ -17,7 +15,13 @@ export function AgentLogToolsView({ events }: AgentLogToolsViewProps) {
     <div className="max-h-96 overflow-y-auto">
       {events.map((event, index) => {
         if (event.type === 'assistant_message') {
-          return <AgentMessage key={index} event={event} />
+          return (
+            <div key={index} className="py-2 px-3 border-b border-border last:border-0">
+              <div className="text-sm text-foreground">
+                {event.message.replace('Agent: ', '')}
+              </div>
+            </div>
+          )
         }
         
         if (event.type === 'tool_result') {

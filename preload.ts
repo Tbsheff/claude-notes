@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   ai: {
     initialize: (config) => ipcRenderer.invoke('ai:initialize', config),
-    processRequest: (message) => ipcRenderer.invoke('ai:process-request', message)
+    processRequest: (message) => ipcRenderer.invoke('ai:process-request', message),
+    agentStream: (messages) => ipcRenderer.invoke('ai:agent-stream', messages)
   },
   llmCall: (messages, model) => ipcRenderer.invoke('llm:call', messages, model),
   notes: {
@@ -32,4 +33,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     on: (channel, listener) => ipcRenderer.on(channel, listener),
     removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener)
   }
+})
+
+contextBridge.exposeInMainWorld('claudeEvents', {
+  on: (listener: (...args: any[]) => void) => ipcRenderer.on('claude-event', listener),
+  off: (listener: (...args: any[]) => void) => ipcRenderer.removeListener('claude-event', listener)
 }) 

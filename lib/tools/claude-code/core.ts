@@ -2,8 +2,8 @@ import { query, type SDKMessage } from '@anthropic-ai/claude-code'
 import { AgentConfig, AgentResponse, WorkspaceConfig, WorkspaceResult } from './types'
 import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from './main-prompt'
 import { ClaudeCodeLogger, getQueryOptions } from './logger'
-import { WorkspaceManager } from '../workspace/manager'
-import { Validator } from '../workspace/validator'
+import { WorkspaceManager } from '../../workspace/manager'
+import { Validator } from '../../workspace/validator'
 
 export class ClaudeCodeAgent {
   private config: AgentConfig

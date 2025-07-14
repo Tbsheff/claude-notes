@@ -1,6 +1,6 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import { ValidationResult } from '../agent/types'
+import { ValidationResult } from '../tools/claude-code/types'
 
 const execAsync = promisify(exec)
 

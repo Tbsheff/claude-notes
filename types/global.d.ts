@@ -44,3 +44,12 @@ declare module "*.sass" {
   const content: Record<string, string>;
   export default content;
 } 
+
+interface ClaudeEventsAPI {
+  on: (listener: (...args: any[]) => void) => void
+  off: (listener: (...args: any[]) => void) => void
+}
+
+interface Window {
+  claudeEvents?: ClaudeEventsAPI
+} 
