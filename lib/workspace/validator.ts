@@ -71,6 +71,9 @@ export class Validator {
 
   private async checkBuild(): Promise<{success: boolean, error?: string}> {
     try {
+      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Compiling project...', icon: '🔧' })
+      
       await execAsync('npm run build', {
         cwd: this.projectRoot,
         timeout: this.timeoutMs

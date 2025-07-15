@@ -24,6 +24,13 @@ export interface ChatMessage {
 export interface AgentChatProps {
   isOpen: boolean
   onToggle: () => void
+  currentNote?: {
+    id: string
+    title: string
+    content: string
+    createdAt: string
+    updatedAt: string
+  }
 }
 
 export interface SessionState {

@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { X } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
 import { AgentMessage } from './agent-message'
+import { DocumentPreview } from './document-preview'
 import { UnifiedMessage } from '@/lib/agent/types'
 import { AgentChatProps } from '../api/types'
 
@@ -12,18 +13,16 @@ function useChatState() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingMessage, setStreamingMessage] = useState<UnifiedMessage | null>(null)
-  const [claudeCodeLogs, setClaudeCodeLogs] = useState<Record<string, string[]>>({})
 
   return {
     messages, setMessages,
     inputValue, setInputValue,
     isLoading, setIsLoading,
-    streamingMessage, setStreamingMessage,
-    claudeCodeLogs, setClaudeCodeLogs
+    streamingMessage, setStreamingMessage
   }
 }
 
-export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
+export function AgentChat({ isOpen, onToggle, currentNote }: AgentChatProps) {
   const chatState = useChatState()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -31,7 +30,7 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [chatState.messages, chatState.streamingMessage, chatState.claudeCodeLogs])
+  }, [chatState.messages, chatState.streamingMessage])
 
   useEffect(() => {
     if (!window.electronAPI) return
@@ -45,7 +44,7 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
       console.log('✅ Stream completed:', data.message.id)
       chatState.setMessages(prev => [...prev, data.message])
       chatState.setStreamingMessage(null)
-      chatState.setIsLoading(false)
+        chatState.setIsLoading(false)
     }
 
     const handleStreamError = (_event: any, data: { streamId: string; error: string }) => {
@@ -71,24 +70,14 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
       chatState.setMessages(prev => [...prev, errorMessage])
     }
 
-    const handleClaudeCodeLogUpdate = (_event: any, data: { toolCallId: string; logs: string[] }) => {
-      console.log('📝 Claude Code logs updated:', data.toolCallId, data.logs)
-      chatState.setClaudeCodeLogs(prev => ({
-        ...prev,
-        [data.toolCallId]: data.logs
-      }))
-    }
-
     window.electronAPI.ipcRenderer.on('agent-message-update', handleMessageUpdate)
     window.electronAPI.ipcRenderer.on('agent-stream-complete', handleStreamComplete)
     window.electronAPI.ipcRenderer.on('agent-stream-error', handleStreamError)
-    window.electronAPI.ipcRenderer.on('claude-code-log-update', handleClaudeCodeLogUpdate)
 
     return () => {
       window.electronAPI.ipcRenderer.removeListener('agent-message-update', handleMessageUpdate)
       window.electronAPI.ipcRenderer.removeListener('agent-stream-complete', handleStreamComplete)
       window.electronAPI.ipcRenderer.removeListener('agent-stream-error', handleStreamError)
-      window.electronAPI.ipcRenderer.removeListener('claude-code-log-update', handleClaudeCodeLogUpdate)
     }
   }, [])
 
@@ -96,6 +85,8 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
     if (!chatState.inputValue.trim() || chatState.isLoading) return
 
     console.log('🔄 handleSendMessage: Starting')
+    console.log('📄 currentNote:', currentNote)
+    console.log('📄 currentNote.content:', currentNote?.content)
 
     const userMessage: UnifiedMessage = {
       id: Date.now().toString(),
@@ -108,7 +99,7 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
         data: { text: chatState.inputValue }
       }],
       metadata: {
-        timestamp: new Date()
+      timestamp: new Date()
       }
     }
 
@@ -118,6 +109,30 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
 
     try {
       const allMessages = [...chatState.messages, userMessage]
+      
+      if (currentNote && currentNote.content && currentNote.content.trim()) {
+        console.log('📄 Adding document content to prompt:', currentNote.content.length, 'characters')
+        const systemMessage: UnifiedMessage = {
+          id: 'system-document',
+          content: `Current document content:\n\n${currentNote.content}\n\nWhen editing the document, you can see the current content above. Use the document-editor tool to make changes.`,
+          role: 'assistant',
+          blocks: [{
+            id: 'system-text',
+            type: 'text',
+            status: 'completed',
+            data: { text: `Current document content:\n\n${currentNote.content}\n\nWhen editing the document, you can see the current content above. Use the document-editor tool to make changes.` }
+          }],
+          metadata: {
+            timestamp: new Date()
+          }
+        }
+        allMessages.unshift(systemMessage)
+      } else {
+        console.log('📄 No document content to add - currentNote:', !!currentNote, 'content:', currentNote?.content?.length || 0)
+      }
+      
+      console.log('📄 Final allMessages:', allMessages.length, 'messages')
+      
       const response = await window.electronAPI.ai.agentStream(allMessages)
       console.log('📡 handleSendMessage: Response received:', response)
       
@@ -135,7 +150,7 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
             data: { text: `Error: ${response.error || 'Task failed'}` }
           }],
           metadata: {
-            timestamp: new Date()
+          timestamp: new Date()
           }
         }
         chatState.setMessages(prev => [...prev, errorMessage])
@@ -154,7 +169,7 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
           data: { text: `Error: ${error}` }
         }],
         metadata: {
-          timestamp: new Date()
+        timestamp: new Date()
         }
       }
       chatState.setMessages(prev => [...prev, errorMessage])
@@ -224,7 +239,9 @@ export function AgentChat({ isOpen, onToggle }: AgentChatProps) {
             </div>
           </ScrollArea>
           
-          <div className="p-4">
+          <div className="p-4 space-y-3">
+            <DocumentPreview currentNote={currentNote} />
+            
             <ChatInput
               value={chatState.inputValue}
               onChange={chatState.setInputValue}

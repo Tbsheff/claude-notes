@@ -6,6 +6,7 @@ import { setupFileHandlers } from './electron/ipc/file-handlers'
 import { setupNoteStorageHandlers } from './electron/ipc/note-handlers'
 import { setupSettingsHandlers } from './electron/ipc/settings-handlers'
 import { setupGeneralHandlers } from './electron/ipc/general-handlers'
+import { setupDocumentHandlers } from './electron/ipc/document-handlers'
 import { setupFileWatcher } from './electron/services/file-watcher-service'
 
 const fileWatcher = setupFileWatcher(getMainWindow, getChangedFiles)
@@ -16,5 +17,6 @@ setupFileHandlers(getMainWindow)
 setupNoteStorageHandlers()
 setupSettingsHandlers()
 setupGeneralHandlers(getMainWindow)
+setupDocumentHandlers(getMainWindow)
 
  

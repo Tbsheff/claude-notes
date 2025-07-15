@@ -8,22 +8,31 @@ export const claudeCodeTool = tool({
   }),
   execute: async ({ task }) => {
     try {
+      const { ClaudeCodeLogger } = await import('./logger')
+      ClaudeCodeLogger.logStart()
+      
       const { processRequest } = await import('../../../electron/services/ai-service')
-      const response = await processRequest(task, () => {})
+      const response = await processRequest(task, () => {
+        console.log('🔄 Claude Code tool completed, rebuild will be handled by agent stream')
+      })
       
       if (response?.success) {
+        ClaudeCodeLogger.logComplete()
         return {
           success: true,
           message: `Task completed successfully. ${response.workspaceResult?.changedFilesCount || 0} files were modified.`,
           changedFiles: response.workspaceResult?.changedFilesCount || 0
         }
       } else {
+        ClaudeCodeLogger.logError(response?.error || 'Unknown error occurred')
         return {
           success: false,
           error: response?.error || 'Unknown error occurred'
         }
       }
     } catch (error) {
+      const { ClaudeCodeLogger } = await import('./logger')
+      ClaudeCodeLogger.logError(error)
       return {
         success: false,
         error: `Error executing Claude Code: ${error}`

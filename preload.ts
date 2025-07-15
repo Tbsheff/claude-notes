@@ -31,7 +31,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   ipcRenderer: {
     on: (channel, listener) => ipcRenderer.on(channel, listener),
-    removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener)
+    removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener),
+    send: (channel, ...args) => ipcRenderer.send(channel, ...args)
+  },
+  document: {
+    update: (request) => ipcRenderer.invoke('document:update', request),
+    getContent: () => ipcRenderer.invoke('document:get-content')
   }
 })
 

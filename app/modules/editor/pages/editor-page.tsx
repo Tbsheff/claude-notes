@@ -23,8 +23,38 @@ function EditorContent() {
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
   const toggleChat = () => setIsChatOpen(!isChatOpen)
 
-  const getPlainTextContent = () => content.replace(/<[^>]+>/g, ' ').trim()
+  const getPlainTextContent = () => (content || '').replace(/<[^>]+>/g, ' ').trim()
   const getMarkdownContent = () => htmlToMarkdown(content)
+  
+  useEffect(() => {
+    if (!window.electronAPI) return
+    
+    const handleDocumentUpdate = (_event: any, request: any) => {
+      const { action, text, position } = request
+      
+      switch (action) {
+        case 'append':
+          setContent(prev => prev + text)
+          break
+        case 'replace':
+          setContent(text)
+          break
+        case 'insert':
+          if (position !== undefined) {
+            setContent(prev => prev.slice(0, position) + text + prev.slice(position))
+          } else {
+            setContent(prev => prev + text)
+          }
+          break
+      }
+    }
+    
+    window.electronAPI.ipcRenderer.on('document-update', handleDocumentUpdate)
+    
+    return () => {
+      window.electronAPI.ipcRenderer.removeListener('document-update', handleDocumentUpdate)
+    }
+  }, [content])
 
   const saveCurrentNote = async () => {
     if (!currentNote) return
@@ -203,7 +233,14 @@ function EditorContent() {
         <Editor value={content} onChange={setContent} onBuild={handleBuild} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
-      <AgentChat isOpen={isChatOpen} onToggle={toggleChat} />
+      <AgentChat 
+        isOpen={isChatOpen} 
+        onToggle={toggleChat} 
+        currentNote={currentNote ? {
+          ...currentNote,
+          content: getMarkdownContent()
+        } : undefined}
+      />
     </div>
   )
 }

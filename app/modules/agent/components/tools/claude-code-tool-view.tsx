@@ -1,6 +1,11 @@
-import { FileText, Edit3, Search, FolderOpen, Code, Wrench, CheckSquare } from 'lucide-react'
+import { FileText, Edit3, Search, FolderOpen, Code, Wrench, CheckSquare, Loader2 } from 'lucide-react'
 import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
 import { TreeToolAction, CollapseToolAction } from './tool-actions'
+import { CollapsibleTool } from './collapsible-tool'
+import { ToolBlock } from '@/lib/agent/types'
+import { toolRegistry } from '@/lib/agent/tool-registry'
+import { useState, useEffect } from 'react'
+import { ClaudeEvent } from '@/lib/tools/claude-code/types'
 
 export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
   if (events.length === 0) {
@@ -18,7 +23,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
           return (
             <div key={index} className="py-2 px-3 border-b border-border last:border-0">
               <div className="text-sm text-foreground">
-                {event.message.replace('Agent: ', '')}
+                {event.message?.replace('Agent: ', '') || 'No message'}
               </div>
             </div>
           )
@@ -29,10 +34,10 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
         }
         
         if (event.type === 'tool_action') {
-          const message = event.message
+          const message = event.message || ''
           
           if (message.includes('Edit:')) {
-            const filePath = message.replace('Edit: ', '')
+            const filePath = (message || '').replace('Edit: ', '')
             const fileName = filePath.split('/').pop() || filePath
             
             return (
@@ -156,3 +161,75 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
     </div>
   )
 } 
+
+function getStatusFromEvent(event: ClaudeEvent | null): string {
+  if (!event) return 'Building...'
+  
+  switch (event.type) {
+    case 'complete': return 'Completed'
+    case 'error': return 'Error'
+    case 'tool_action': 
+      if (event.message.includes('Validating workspace changes')) return 'Validating...'
+      if (event.message.includes('Applying changes to main codebase')) return 'Applying changes...'
+      if (event.message.includes('Compiling project')) return 'Compiling...'
+      if (event.message.includes('Auto-rebuilding')) return 'Building...'
+      return 'Building...'
+    default: return 'Building...'
+  }
+}
+
+export function ClaudeCodeChatBlock({ block }: { block: ToolBlock }) {
+  const { args, logs } = block.data
+  const isExecuting = block.status === 'executing'
+  const [currentEvent, setCurrentEvent] = useState<ClaudeEvent | null>(null)
+  
+  useEffect(() => {
+    if (!window.electronAPI) return
+    
+    const handleClaudeEvent = (_event: any, claudeEvent: ClaudeEvent) => {
+      setCurrentEvent(claudeEvent)
+      
+      if (claudeEvent.type === 'complete' || claudeEvent.type === 'error') {
+        setTimeout(() => setCurrentEvent(null), 2000)
+      }
+    }
+    
+    window.electronAPI.ipcRenderer.on('claude-event', handleClaudeEvent)
+    
+    return () => {
+      window.electronAPI.ipcRenderer.removeListener('claude-event', handleClaudeEvent)
+    }
+  }, [])
+  
+  const currentStatus = getStatusFromEvent(currentEvent)
+  const title = (isExecuting || currentEvent) ? currentStatus : 'Claude Code'
+  const isWorking = isExecuting || (currentEvent && currentEvent.type !== 'complete')
+  
+
+
+  return (
+    <CollapsibleTool
+      title={title}
+      icon={isWorking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Code className="h-3 w-3" />}
+      dataTestId={isExecuting ? 'claude-code-executing' : 'claude-code-completed'}
+    >
+      <div className="space-y-1 text-sm">
+        {args?.task && (
+          <div className="text-muted-foreground font-medium">Task: {args.task}</div>
+        )}
+        {logs && logs.length > 0 ? (
+          logs.map((line: string, idx: number) => (
+            <div key={idx} className="flex gap-1 text-xs font-mono break-all">
+              <span>{line.slice(0,2)}</span>
+              <span className="flex-1">{line.slice(2)}</span>
+            </div>
+          ))
+        ) : (
+          <div className="text-muted-foreground text-xs">No logs yet…</div>
+        )}
+      </div>
+    </CollapsibleTool>
+  )
+}
+
+toolRegistry.register('claude-code', ClaudeCodeChatBlock) 

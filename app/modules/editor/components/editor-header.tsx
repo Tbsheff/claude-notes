@@ -1,29 +1,30 @@
 import React from 'react'
-import { Download, Menu, Sparkles } from 'lucide-react'
+import { Download, Menu, Sparkles, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './editor-settings-dialog'
 
 interface NoteEditorHeaderProps {
-  createdAt: Date
   isBuilding: boolean
   buildStatus: string
   content: string
   onToggleChat: () => void
+  createdAt: Date
 }
 
-export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content, onToggleChat }: NoteEditorHeaderProps) {
-  const [currentTime, setCurrentTime] = React.useState(new Date())
-  
+export function NoteEditorHeader({ isBuilding, buildStatus, content, onToggleChat, createdAt }: NoteEditorHeaderProps) {
   console.log('🎯 Header render - isBuilding:', isBuilding, 'buildStatus:', buildStatus)
   
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [])
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
   
   const handleExport = () => {
     if (!content.trim()) {
@@ -45,16 +46,10 @@ export function NoteEditorHeader({ createdAt, isBuilding, buildStatus, content, 
   return (
     <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-background">
       <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground">
-          📅 {createdAt.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            month: 'long', 
-            day: 'numeric' 
-          })}, {currentTime.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit'
-          })}
-        </span>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          {formatDateTime(createdAt)}
+        </div>
       </div>
       
       <div className="flex items-center space-x-4">

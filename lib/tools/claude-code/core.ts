@@ -74,6 +74,7 @@ export class ClaudeCodeAgent {
 
       if (workspaceConfig.validateAfter) {
         console.log('🔍 Validating workspace changes...')
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validating workspace changes...', icon: '🔍' })
         const validator = new Validator(workspaceResult.workspacePath!, workspaceConfig.timeoutMs)
         const validationResult = await validator.validate()
         
@@ -89,6 +90,7 @@ export class ClaudeCodeAgent {
       }
 
       console.log('📋 Applying changes to main codebase...')
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Applying changes to main codebase...', icon: '📋' })
       const changedFilesCount = await manager.applyChanges()
 
       const response = this.extractResponse(messages)

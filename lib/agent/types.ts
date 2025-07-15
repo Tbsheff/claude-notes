@@ -27,6 +27,7 @@ export interface ToolBlock extends MessageBlock {
     args?: any
     result?: any
     logs?: string[]
+    currentStatus?: string
   }
 }
 

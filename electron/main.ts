@@ -18,6 +18,9 @@ export function createWindow() {
 
   const { setMainWindow } = require('./ipc/ai-handlers')
   setMainWindow(mainWindow)
+  
+  const { setMainWindow: setDocumentMainWindow } = require('./services/document-service')
+  setDocumentMainWindow(mainWindow)
 
   const isDev = process.env.NODE_ENV === 'development';
   

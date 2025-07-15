@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
 import { CollapsibleTool } from './tools/collapsible-tool'
 import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
+import { getToolComponent } from '@/lib/agent/tool-registry'
+import './tools/claude-code-tool-view'
+import './tools/document-editor-tool-view'
 import equal from 'fast-deep-equal'
 
 const renderTextBlock = (block: TextBlock, isUser: boolean) => {
@@ -27,38 +30,9 @@ const renderToolBlock = (block: ToolBlock) => {
   const isExecuting = block.status === 'executing'
   const isCompleted = block.status === 'completed'
   
-  if (toolName === 'claude-code') {
-    return (
-      <div className="w-full max-w-lg md:max-w-2xl">
-        <CollapsibleTool 
-          title={isExecuting ? "Running Claude Code" : "Claude Code"}
-          icon={<SparklesIcon size={16} />}
-          dataTestId={isExecuting ? "claude-code-executing" : "claude-code-completed"}
-        >
-          <div className="space-y-2">
-            {isExecuting && (
-              <div className="text-sm text-muted-foreground">
-                Executing: {args?.task || 'Unknown task'}
-              </div>
-            )}
-            {isCompleted && (
-              <div className="text-sm text-green-600">
-                {result?.message || 'Task completed successfully'}
-              </div>
-            )}
-            {logs && logs.length > 0 && (
-              <div className="border-t border-border pt-2">
-                <div className="text-xs text-muted-foreground space-y-1">
-                  {logs.map((log: string, index: number) => (
-                    <div key={index} className="font-mono">{log}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </CollapsibleTool>
-      </div>
-    )
+  const ToolComponent = getToolComponent(toolName)
+  if (ToolComponent) {
+    return <ToolComponent block={block} />
   }
   
   return (

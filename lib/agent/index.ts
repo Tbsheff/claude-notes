@@ -1,6 +1,7 @@
 import { streamText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { claudeCodeTool } from '../tools/claude-code'
+import { documentEditorTool } from '../tools/document-editor'
 
 export function createAgentStream(messages: any[], options: any = {}) {
   console.log('🎬 createAgentStream: Creating stream with messages:', messages.length)
@@ -9,7 +10,8 @@ export function createAgentStream(messages: any[], options: any = {}) {
     model: anthropic('claude-3-5-sonnet-20241022'),
     messages,
     tools: {
-      'claude-code': claudeCodeTool
+      'claude-code': claudeCodeTool,
+      'document-editor': documentEditorTool
     },
     onChunk({ chunk }) {
       console.log('🧩 onChunk: Full chunk:', JSON.stringify(chunk, null, 2))

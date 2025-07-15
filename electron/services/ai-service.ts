@@ -87,19 +87,34 @@ export async function llmCall(messages: any, model: string) {
   }
 }
 
-// Store conversation history using AI SDK's response.messages
 let conversationHistory: any[] = []
 
-export async function createAgentStream(messages: any[]) {
+export async function createAgentStream(messages: any[], rebuildCallback?: () => void) {
   try {
     const stored = await getStoredApiKeys()
     const { createAgentStream } = await import('../../lib/agent')
 
-    const userMessages = messages.filter(msg => msg.role === 'user')
-    if (userMessages.length > 0) {
-      const lastUserMessage = userMessages[userMessages.length - 1]
-      conversationHistory.push({ role: 'user', content: lastUserMessage.content })
+    const newMessages = messages.filter(msg => 
+      !conversationHistory.some(existingMsg => existingMsg.role === msg.role && existingMsg.content === msg.content)
+    )
+    
+    const documentSystemMessage = newMessages.find(msg => msg.id === 'system-document')
+    
+    if (documentSystemMessage) {
+      const existingSystemIndex = conversationHistory.findIndex(msg => msg.role === 'system' && msg.content.includes('Current document content'))
+      
+      if (existingSystemIndex >= 0) {
+          conversationHistory[existingSystemIndex] = { role: 'system', content: documentSystemMessage.content }
+      } else {
+        conversationHistory.unshift({ role: 'system', content: documentSystemMessage.content })
+      }
     }
+    
+    newMessages.forEach(msg => {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        conversationHistory.push({ role: msg.role, content: msg.content })
+      }
+    })
     
     console.log('📋 Conversation history:', JSON.stringify(conversationHistory, null, 2))
     
@@ -123,9 +138,9 @@ export async function createAgentStream(messages: any[]) {
 
     streamHandler.startStream(streamId)
     
-    const logManager = await setupClaudeCodeLogging(streamId, streamHandler)
+    const logManager = await setupToolLogging(streamId, streamHandler)
     
-    processStreamChunks(stream, streamHandler, logManager)
+    processStreamChunks(stream, streamHandler, logManager, rebuildCallback)
     
     return { success: true, streamId }
   } catch (e) {
@@ -133,91 +148,93 @@ export async function createAgentStream(messages: any[]) {
   }
 }
 
-async function setupClaudeCodeLogging(streamId: string, streamHandler: StreamHandler) {
-  const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
-  const originalCallback = ClaudeCodeLogger.getCurrentEventCallback()
+async function setupToolLogging(streamId: string, streamHandler: StreamHandler) {
+    const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
+    const originalCallback = ClaudeCodeLogger.getCurrentEventCallback()
   
-  let claudeCodeLogs: string[] = []
-  let currentClaudeCodeToolCallId: string | null = null
-  
-  const claudeCodeLogHandler = (event: any) => {
-    if (currentClaudeCodeToolCallId) {
-      const logLine = `${event.icon} ${event.message}`
-      claudeCodeLogs.push(logLine)
+  let toolLogs: string[] = []
+  let currentToolCallId: string | null = null
+    
+    const toolLogHandler = (event: any) => {
+      if (currentToolCallId) {
+        const logLine = `${event.icon} ${event.message}`
+        toolLogs.push(logLine)
+        
+      streamHandler.updateToolLogs(currentToolCallId, toolLogs)
+      }
       
-      // Отправляем логи через streamHandler
-      streamHandler.updateToolLogs(currentClaudeCodeToolCallId, claudeCodeLogs)
-      
-      // И также через старый механизм для совместимости
-      mainWindow?.webContents.send('claude-code-log-update', {
-        toolCallId: currentClaudeCodeToolCallId,
-        logs: claudeCodeLogs
-      })
+      if (originalCallback) {
+        originalCallback(event)
+      }
     }
     
-    if (originalCallback) {
-      originalCallback(event)
-    }
-  }
-  
-  ClaudeCodeLogger.setEventCallback(claudeCodeLogHandler)
-  
+    ClaudeCodeLogger.setEventCallback(toolLogHandler)
+    
   return { 
     startLogging: (toolCallId: string) => {
-      currentClaudeCodeToolCallId = toolCallId
-      claudeCodeLogs = []
+      currentToolCallId = toolCallId
+      toolLogs = []
     },
     finishLogging: () => {
-      const logs = [...claudeCodeLogs]
-      currentClaudeCodeToolCallId = null
+      const logs = [...toolLogs]
+      currentToolCallId = null
       return logs
     }
   }
 }
 
-async function processStreamChunks(stream: any, streamHandler: StreamHandler, logManager: any) {
+async function processStreamChunks(stream: any, streamHandler: StreamHandler, logManager: any, rebuildCallback?: () => void) {
   try {
-    for await (const chunk of stream.fullStream) {
-      if (chunk.type === 'text-delta') {
+        for await (const chunk of stream.fullStream) {
+          if (chunk.type === 'text-delta') {
         const fullText = streamHandler.getCurrentMessage()?.content || ''
         streamHandler.handleTextChunk(chunk.textDelta, fullText + chunk.textDelta)
-      } else if (chunk.type === 'tool-call') {
-        if (chunk.toolName === 'claude-code') {
+          } else if (chunk.type === 'tool-call') {
+            if (chunk.toolName === 'claude-code') {
           logManager.startLogging(chunk.toolCallId)
         }
         streamHandler.handleToolCall(chunk.toolName, chunk.toolCallId, chunk.args)
-      } else if ((chunk as any).type === 'tool-call-delta') {
+          } else if ((chunk as any).type === 'tool-call-delta') {
         const { toolCallId, argsTextDelta } = chunk as any
         streamHandler.handleToolCallDelta(toolCallId, argsTextDelta)
-      } else if ((chunk as any).type === 'tool-result') {
-        const { toolCallId, toolName, result } = chunk as any
-        
+          } else if ((chunk as any).type === 'tool-result') {
+            const { toolCallId, toolName, result } = chunk as any
+            
         if (toolName === 'claude-code') {
           const logs = logManager.finishLogging()
-          result.logs = logs
-          result.executionDetails = logs.join('\n')
+          if (logs.length > 0) {
+            result.logs = logs
+            result.executionDetails = logs.join('\n')
+            
+            if (rebuildCallback) {
+              setTimeout(() => {
+                console.log('🔄 Triggering rebuild after claude-code completion')
+                rebuildCallback()
+              }, 500)
+            }
+          }
+              }
+              
+        streamHandler.handleToolResult(toolCallId, toolName, result)
+          }
         }
         
-        streamHandler.handleToolResult(toolCallId, toolName, result)
-      }
-    }
-    
     streamHandler.completeStream()
     
-    setTimeout(async () => {
-      try {
-        const result = await stream
-        const response = await result.response
-        if (response?.messages) {
-          conversationHistory.push(...response.messages)
-          console.log('📝 Added response.messages to history:', response.messages.length, 'messages')
-        }
-      } catch (err) {
-        console.error('Failed to get response.messages:', err)
-      }
-    }, 500)
-    
-  } catch (error) {
+        setTimeout(async () => {
+          try {
+            const result = await stream
+            const response = await result.response
+            if (response?.messages) {
+              conversationHistory.push(...response.messages)
+              console.log('📝 Added response.messages to history:', response.messages.length, 'messages')
+            }
+          } catch (err) {
+            console.error('Failed to get response.messages:', err)
+          }
+        }, 500)
+        
+      } catch (error) {
     streamHandler.handleError(error instanceof Error ? error.message : String(error))
   }
 } 
