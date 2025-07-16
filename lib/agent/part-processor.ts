@@ -1,0 +1,135 @@
+import { UnifiedMessage, MessageBlock } from './types'
+
+// Global store for Claude Code events by toolCallId
+const toolCallLogs: Record<string, any[]> = {}
+
+export function addClaudeCodeLog(toolCallId: string, event: any) {
+  if (!toolCallLogs[toolCallId]) {
+    toolCallLogs[toolCallId] = []
+  }
+  
+  if (event.type === 'assistant_message' || event.type === 'tool_action') {
+    const formattedEvent = `${event.icon || '•'} ${event.message}`
+    toolCallLogs[toolCallId].push(formattedEvent)
+    console.log('🔥 [part-processor] Added log for toolCallId:', toolCallId, 'logs count:', toolCallLogs[toolCallId].length)
+  }
+}
+
+export function getClaudeCodeLogs(toolCallId: string): any[] {
+  return toolCallLogs[toolCallId] || []
+}
+
+export function clearClaudeCodeLogs(toolCallId: string) {
+  delete toolCallLogs[toolCallId]
+}
+
+export function getClaudeCodeStatus(toolCallId: string): string {
+  const logs = toolCallLogs[toolCallId] || []
+  if (logs.length === 0) return 'Building...'
+  
+  const lastLog = logs[logs.length - 1]
+  
+  if (lastLog.includes('Validating workspace changes')) return 'Validating...'
+  if (lastLog.includes('Compiling project')) return 'Building...'
+  if (lastLog.includes('Applying changes to main codebase')) return 'Applying changes...'
+  if (lastLog.includes('changed files to main project')) return 'Applying changes...'
+  if (lastLog.includes('Task completed')) return 'Rebuilding...'
+  if (lastLog.includes('Rebuilding project')) return 'Rebuilding...'
+  if (lastLog.includes('Rebuild completed')) return 'Completed'
+  if (lastLog.includes('Agent ready')) return 'Completed'
+  
+  return 'Building...'
+}
+
+export function processStreamParts(
+  streamId: string,
+  parts: any[],
+  existingMessage?: UnifiedMessage
+): UnifiedMessage {
+  let content = existingMessage?.content || ''
+  const blocks: MessageBlock[] = []
+  const toolCalls: Record<string, any> = {}
+
+  for (const part of parts) {
+    switch (part.type) {
+      case 'text-delta':
+        content += part.textDelta
+        break
+      case 'tool-call-streaming-start':
+        toolCalls[part.toolCallId] = {
+          toolCallId: part.toolCallId,
+          toolName: part.toolName,
+          state: 'input-streaming',
+          rawInput: ''
+        }
+        break
+      case 'tool-call-delta':
+        if (toolCalls[part.toolCallId]) {
+          toolCalls[part.toolCallId].rawInput += part.argsTextDelta
+        }
+        break
+      case 'tool-call':
+        toolCalls[part.toolCallId] = {
+          toolCallId: part.toolCallId,
+          toolName: part.toolName,
+          state: 'input-available',
+          input: part.args
+        }
+        break
+      case 'tool-result':
+        if (toolCalls[part.toolCallId]) {
+          toolCalls[part.toolCallId].state = 'output-available'
+          toolCalls[part.toolCallId].output = part.result
+        }
+        break
+    }
+  }
+
+  // Convert aggregated tool calls to blocks for UI
+  for (const toolCall of Object.values(toolCalls)) {
+    const statusMap: any = {
+      'input-streaming': 'executing',
+      'input-available': 'executing',
+      'output-available': 'completed'
+    }
+    
+    // Include Claude Code logs in tool block data (always get fresh logs)
+    const claudeCodeLogs = getClaudeCodeLogs(toolCall.toolCallId)
+    console.log('🔥 [part-processor] Tool block for', toolCall.toolCallId, 'logs:', claudeCodeLogs)
+    
+    blocks.push({
+      id: toolCall.toolCallId,
+      type: 'tool',
+      status: statusMap[toolCall.state] || 'executing',
+      data: {
+        toolName: toolCall.toolName,
+        toolCallId: toolCall.toolCallId,
+        args: toolCall.input || toolCall.rawInput,
+        result: toolCall.output,
+        logs: [...claudeCodeLogs] // Create new array to ensure fresh reference
+      }
+    })
+  }
+  
+  if (content.trim()) {
+      blocks.unshift({
+          id: `text-block-${streamId}`,
+          type: 'text',
+          status: 'completed',
+          data: { text: content.trim() }
+      })
+  }
+
+  return {
+    id: streamId,
+    role: 'assistant',
+    content,
+    blocks,
+    metadata: {
+      timestamp: new Date(),
+      streamId,
+      isStreaming: true
+    },
+    toolInvocations: Object.values(toolCalls)
+  }
+} 

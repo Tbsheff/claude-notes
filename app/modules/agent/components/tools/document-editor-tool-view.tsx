@@ -1,75 +1,67 @@
-import { useState, useEffect, useRef } from 'react'
-import { FileText, Loader2, Edit, Plus, Replace, Minus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { FileText, Loader2, Edit, Plus, Replace, Minus, Check, X } from 'lucide-react'
 import { CollapsibleTool } from './collapsible-tool'
-import { ToolBlock } from '@/lib/agent/types'
+import { ToolBlock, Note } from '@/lib/agent/types'
 import { toolRegistry } from '@/lib/agent/tool-registry'
+import * as DiffMatchPatch from 'diff-match-patch'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
-export function DocumentEditorChatBlock({ block }: { block: ToolBlock }) {
-  const { args, result } = block.data
-  const isExecuting = block.status === 'executing'
-  const [displayText, setDisplayText] = useState('')
-  const [displayAction, setDisplayAction] = useState('')
-  const [cursorPosition, setCursorPosition] = useState(0)
+const dmp = new DiffMatchPatch.diff_match_patch()
+
+function renderDiff(oldContent: string, newContent: string) {
+  const diffs = dmp.diff_main(oldContent, newContent)
+  dmp.diff_cleanupSemantic(diffs)
   
-  // Handle args updates (AI SDK 4.0 progressively builds the args)
-  useEffect(() => {
-    if (args) {
-      if (typeof args === 'string') {
-        // Still accumulating JSON, try to extract partial info
-        const textMatch = args.match(/"text":\s*"([^"]*(?:\\.[^"]*)*)"/)
-        const actionMatch = args.match(/"action":\s*"([^"]*)"/)
-        
-        if (textMatch) {
-          const text = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
-          setDisplayText(text)
-        }
-        if (actionMatch) {
-          setDisplayAction(actionMatch[1])
-        }
-      } else if (typeof args === 'object') {
-        // Complete parsed object
-        setDisplayText(args.text || '')
-        setDisplayAction(args.action || '')
-      }
+  return diffs.map(([op, text], index) => {
+    switch (op) {
+      case DiffMatchPatch.DIFF_INSERT:
+        return <ins key={index} className="bg-green-100 text-green-800">{text}</ins>
+      case DiffMatchPatch.DIFF_DELETE:
+        return <del key={index} className="bg-red-100 text-red-800">{text}</del>
+      case DiffMatchPatch.DIFF_EQUAL:
+        return <span key={index}>{text}</span>
     }
-  }, [args])
+  })
+}
 
-  // Handle final result
+export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: { 
+  block: ToolBlock, 
+  currentNote?: Note,
+  onApplyChanges?: (newContent: string) => void 
+}) {
+  const { result } = block.data
+  const isExecuting = block.status === 'executing'
+  const [displayAction, setDisplayAction] = useState('')
+  const [isApplied, setIsApplied] = useState(false)
+  const [isDeclined, setIsDeclined] = useState(false)
+
   useEffect(() => {
-    if (result?.args) {
-      const finalArgs = typeof result.args === 'string' ? JSON.parse(result.args) : result.args
-      setDisplayText(finalArgs.text || '')
-      setDisplayAction(finalArgs.action || '')
+    if (result?.success) {
+      // Now this only sets the action, not the applied state
+      setDisplayAction(result.action || '')
     }
   }, [result])
 
-  // Typing animation for streaming
-  useEffect(() => {
-    if (isExecuting && displayText) {
-      const text = displayText
-      let index = 0
-      setCursorPosition(0)
-      
-      const interval = setInterval(() => {
-        if (index < text.length) {
-          setCursorPosition(index + 1)
-          index++
-        } else {
-          clearInterval(interval)
-        }
-      }, 20)
-      
-      return () => clearInterval(interval)
+  const handleApply = () => {
+    if (result?.success && result.newContent) {
+      onApplyChanges?.(result.newContent)
+      setIsApplied(true)
     }
-  }, [displayText, isExecuting])
+  }
+
+  const handleDecline = () => {
+    setIsDeclined(true)
+  }
 
   const getActionIcon = () => {
-    switch (displayAction) {
+    const action = isExecuting ? displayAction : result?.action
+    switch (action) {
       case 'replace': return <Replace className="h-4 w-4" />
       case 'append': return <Plus className="h-4 w-4" />
       case 'prepend': return <Plus className="h-4 w-4" />
       case 'delete': return <Minus className="h-4 w-4" />
-      default: return <Edit className="h-4 w-4" />
+      default: return <FileText className="h-4 w-4" />
     }
   }
 
@@ -82,60 +74,46 @@ export function DocumentEditorChatBlock({ block }: { block: ToolBlock }) {
       default: return 'editing'
     }
   }
-
-  const getTitle = () => {
-    if (isExecuting) {
-      return `Document Editor (${getActionText()}...)`
-    }
-    return 'Document Editor'
+  
+  if (isExecuting) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <FileText className="h-4 w-4" />
+        <span className="font-medium">{currentNote?.title || 'Document'}</span>
+        <span className="text-xs">({getActionText()}...)</span>
+      </div>
+    )
   }
 
-  const getStatusText = () => {
-    if (isExecuting) {
-      return `Action: ${getActionText()}`
-    }
-    return `Action: ${displayAction || 'completed'}`
+  if (result?.success && result.oldContent && result.newContent) {
+    return (
+      <div className="bg-muted/50 rounded-lg overflow-hidden border">
+        <div className="flex items-center gap-2 text-sm p-3 border-b">
+          {getActionIcon()}
+          <span className="font-medium">{currentNote?.title || 'Document'}</span>
+          <span className="text-xs">({result.action})</span>
+          {isApplied && <Badge variant="secondary">✓ Applied</Badge>}
+          {isDeclined && <Badge variant="secondary">✗ Declined</Badge>}
+        </div>
+        <div className="p-3 text-xs max-h-48 overflow-y-auto font-mono whitespace-pre-wrap">
+          {renderDiff(result.oldContent, result.newContent)}
+        </div>
+        {!(isApplied || isDeclined) && (
+          <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
+            <Button variant="outline" size="sm" onClick={handleDecline}><X className="h-3 w-3 mr-1" /> Decline</Button>
+            <Button size="sm" onClick={handleApply}><Check className="h-3 w-3 mr-1" /> Apply</Button>
+          </div>
+        )}
+      </div>
+    )
   }
-
-  const previewText = isExecuting ? displayText.slice(0, cursorPosition) : displayText
 
   return (
-    <div className="w-full max-w-lg md:max-w-2xl">
-      <CollapsibleTool 
-        title={getTitle()}
-        icon={isExecuting ? <Loader2 className="h-4 w-4 animate-spin" /> : getActionIcon()}
-        dataTestId={isExecuting ? 'document-editor-executing' : 'document-editor-completed'}
-      >
-        <div className="space-y-3 text-sm">
-          <div className="text-muted-foreground">
-            {getStatusText()}
-          </div>
-          
-          {displayText && (
-            <div className="border rounded-lg p-3 bg-muted/20">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <FileText className="h-3 w-3" />
-                Content Preview
-              </div>
-              <div className="text-sm whitespace-pre-wrap font-mono">
-                {previewText}
-                {isExecuting && <span className="animate-pulse">|</span>}
-              </div>
-              {isExecuting && displayText.length > cursorPosition && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  {displayText.length - cursorPosition} more characters...
-                </div>
-              )}
-            </div>
-          )}
-          
-          {result && (
-            <div className="text-xs text-muted-foreground">
-              ✓ {displayText.length} characters processed
-            </div>
-          )}
-        </div>
-      </CollapsibleTool>
+    <div className="flex items-center gap-2 text-sm text-red-500 bg-red-500/10 rounded-lg p-3">
+      <X className="h-4 w-4" />
+      <span className="font-medium">Document Editor</span>
+      <span className="text-xs">Error: {result?.error || 'Failed'}</span>
     </div>
   )
 }

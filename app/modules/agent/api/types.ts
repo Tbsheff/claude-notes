@@ -1,7 +1,8 @@
 import React from 'react'
 import { ClaudeEvent } from '@/lib/tools/claude-code/types'
 import { cleanWorkspacePath, getFileName, getDirName, truncateCommand } from '@/lib/tools/claude-code/logger'
-import { UnifiedMessage } from '@/lib/agent/types'
+import { UnifiedMessage, ToolBlock } from '@/lib/agent/types'
+import { Note } from '@/app/modules/editor/api'
 
 export interface ChatMessage {
   id: string
@@ -49,7 +50,15 @@ export interface AgentMessageProps {
 }
 
 export interface ChatMessageProps {
-  message: UnifiedMessage
+  message: UnifiedMessage;
+  currentNote?: Note;
+  onApplyChanges?: (newContent: string) => void;
+}
+
+export interface ToolComponentProps {
+  block: ToolBlock;
+  currentNote?: Note;
+  onApplyChanges?: (newContent: string) => void;
 }
 
 export interface TreeToolActionProps {

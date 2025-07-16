@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { NoteEditorHeader } from '../components/editor-header'
 import { NoteEditorFooter } from '../components/editor-footer'
 import { NotesSidebar } from '../../general/components/app-sidebar'
@@ -24,7 +24,7 @@ function EditorContent() {
   const toggleChat = () => setIsChatOpen(!isChatOpen)
 
   const getPlainTextContent = () => (content || '').replace(/<[^>]+>/g, ' ').trim()
-  const getMarkdownContent = () => htmlToMarkdown(content)
+  const getMarkdownContent = useCallback(() => htmlToMarkdown(content), [content]);
   
   useEffect(() => {
     if (!window.electronAPI) return
@@ -32,29 +32,37 @@ function EditorContent() {
     const handleDocumentUpdate = (_event: any, request: any) => {
       const { action, text, position } = request
       
-      switch (action) {
-        case 'append':
-          setContent(prev => prev + text)
-          break
-        case 'replace':
-          setContent(text)
-          break
-        case 'insert':
-          if (position !== undefined) {
-            setContent(prev => prev.slice(0, position) + text + prev.slice(position))
-          } else {
-            setContent(prev => prev + text)
-          }
-          break
+      setContent(currentContent => {
+        switch (action) {
+          case 'append':
+            return currentContent + markdownToHtml(text)
+          case 'replace':
+            return markdownToHtml(text)
+          case 'insert':
+            if (position !== undefined) {
+              return currentContent.slice(0, position) + markdownToHtml(text) + currentContent.slice(position)
+            }
+            return currentContent + markdownToHtml(text)
+          default:
+            return currentContent
+        }
+      })
+    }
+    
+    const handleGetDocumentContent = (_event: any, { noteId }: { noteId: string }) => {
+      if (currentNote && currentNote.id === noteId) {
+        window.electronAPI.ipcRenderer.send(`document-content-response-${noteId}`, getMarkdownContent())
       }
     }
     
     window.electronAPI.ipcRenderer.on('document-update', handleDocumentUpdate)
+    window.electronAPI.ipcRenderer.on('get-document-content', handleGetDocumentContent)
     
     return () => {
       window.electronAPI.ipcRenderer.removeListener('document-update', handleDocumentUpdate)
+      window.electronAPI.ipcRenderer.removeListener('get-document-content', handleGetDocumentContent)
     }
-  }, [content])
+  }, [content, currentNote, getMarkdownContent])
 
   const saveCurrentNote = async () => {
     if (!currentNote) return
@@ -225,7 +233,7 @@ function EditorContent() {
     if (md === lastSavedContent) return
     const t = setTimeout(saveCurrentNote, 1500)
     return () => clearTimeout(t)
-  }, [content, currentNote, lastSavedContent])
+  }, [content, currentNote, lastSavedContent, getMarkdownContent])
 
   return (
     <div className="w-full h-screen max-h-screen flex bg-background">
@@ -254,6 +262,7 @@ function EditorContent() {
             ...currentNote,
             content: getMarkdownContent()
           } : undefined}
+          onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
         />
       )}
     </div>

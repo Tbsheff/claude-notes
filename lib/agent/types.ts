@@ -1,9 +1,18 @@
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UnifiedMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   blocks: MessageBlock[]
   metadata: MessageMetadata
+  toolInvocations?: any[]
 }
 
 export interface MessageBlock {

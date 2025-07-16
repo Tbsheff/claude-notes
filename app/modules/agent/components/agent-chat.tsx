@@ -5,177 +5,152 @@ import { ChatInput } from './agnet-chat-input'
 import { AgentMessage } from './agent-message'
 import { DocumentPreview } from './document-preview'
 import { UnifiedMessage } from '@/lib/agent/types'
-import { AgentChatProps } from '../api/types'
+import { processStreamParts, addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/agent/part-processor'
 
-function useChatState() {
+export function AgentChat({ onToggle, currentNote, onApplyChanges }: any) {
   const [messages, setMessages] = useState<UnifiedMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingMessage, setStreamingMessage] = useState<UnifiedMessage | null>(null)
-
-  return {
-    messages, setMessages,
-    inputValue, setInputValue,
-    isLoading, setIsLoading,
-    streamingMessage, setStreamingMessage
-  }
-}
-
-export function AgentChat({ onToggle, currentNote }: Omit<AgentChatProps, 'isOpen'>) {
-  const chatState = useChatState()
+  
+  const streamPartsRef = useRef<Record<string, any[]>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [chatState.messages, chatState.streamingMessage])
+  }, [messages, streamingMessage]);
 
   useEffect(() => {
     if (!window.electronAPI) return
 
-    const handleMessageUpdate = (_event: any, data: { streamId: string; message: UnifiedMessage }) => {
-      console.log('📝 Message update received:', data.message.id)
-      chatState.setStreamingMessage(data.message)
-    }
-
-    const handleStreamComplete = (_event: any, data: { streamId: string; message: UnifiedMessage }) => {
-      console.log('✅ Stream completed:', data.message.id)
-      chatState.setMessages(prev => [...prev, data.message])
-      chatState.setStreamingMessage(null)
-        chatState.setIsLoading(false)
-    }
-
-    const handleStreamError = (_event: any, data: { streamId: string; error: string }) => {
-      console.log('❌ Stream error:', data.error)
-      chatState.setStreamingMessage(null)
-      chatState.setIsLoading(false)
+    const handleStreamPart = (_event: any, data: { streamId: string; part: any }) => {
+      const { streamId, part } = data
       
-      const errorMessage: UnifiedMessage = {
-        id: data.streamId,
-        content: `Error: ${data.error}`,
-        role: 'assistant',
-        blocks: [{
-          id: 'error',
-          type: 'text',
-          status: 'error',
-          data: { text: `Error: ${data.error}` }
-        }],
-        metadata: {
-          timestamp: new Date(),
-          streamId: data.streamId
-        }
-      }
-      chatState.setMessages(prev => [...prev, errorMessage])
+      const currentParts = streamPartsRef.current[streamId] || []
+      const newParts = [...currentParts, part]
+      streamPartsRef.current[streamId] = newParts
+      
+      const msg = processStreamParts(streamId, newParts)
+      setStreamingMessage(msg)
     }
 
-    window.electronAPI.ipcRenderer.on('agent-message-update', handleMessageUpdate)
-    window.electronAPI.ipcRenderer.on('agent-stream-complete', handleStreamComplete)
-    window.electronAPI.ipcRenderer.on('agent-stream-error', handleStreamError)
+    const handleStreamComplete = (_event: any, data: { streamId: string }) => {
+      const finalParts = streamPartsRef.current[data.streamId] || []
+      if (finalParts.length > 0) {
+        const finalMessage = processStreamParts(data.streamId, finalParts)
+        finalMessage.metadata.isStreaming = false
+        setMessages(prev => [...prev, finalMessage])
+      }
+      
+      setStreamingMessage(null)
+      delete streamPartsRef.current[data.streamId]
+      setIsLoading(false)
+    }
+
+    const handleClaudeCodeEvent = (_event: any, event: any) => {
+      console.log('🔥 [agent-chat] Received claude-code-event:', event)
+      if (event.toolCallId) {
+        console.log('🔥 [agent-chat] Adding log for toolCallId:', event.toolCallId)
+        addClaudeCodeLog(event.toolCallId, event)
+        
+        // Force update streaming message with new logs
+        setStreamingMessage(prevStreamingMessage => {
+          if (prevStreamingMessage) {
+            console.log('🔥 [agent-chat] Force updating streaming message:', prevStreamingMessage.id)
+            const currentParts = streamPartsRef.current[prevStreamingMessage.id] || []
+            const msg = processStreamParts(prevStreamingMessage.id, currentParts)
+            
+            // Force new object reference to trigger re-render
+            return {
+              ...msg,
+              blocks: msg.blocks.map(block => {
+                // If this is a claude-code block, update its logs and status
+                if (block.data.toolName === 'claude-code') {
+                  const freshLogs = getClaudeCodeLogs(block.data.toolCallId)
+                  const status = getClaudeCodeStatus(block.data.toolCallId)
+                  return {
+                    ...block,
+                    data: { 
+                      ...block.data,
+                      logs: [...freshLogs], // Always get fresh logs
+                      currentStatus: status // Add status for UI
+                    }
+                  }
+                }
+                return {
+                  ...block,
+                  data: { ...block.data }
+                }
+              })
+            }
+          }
+          return prevStreamingMessage
+        })
+      }
+    }
+
+    window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
+    window.electronAPI.ipcRenderer.on('ai-stream-complete', handleStreamComplete)
+    window.electronAPI.ipcRenderer.on('claude-code-event', handleClaudeCodeEvent)
 
     return () => {
-      window.electronAPI.ipcRenderer.removeListener('agent-message-update', handleMessageUpdate)
-      window.electronAPI.ipcRenderer.removeListener('agent-stream-complete', handleStreamComplete)
-      window.electronAPI.ipcRenderer.removeListener('agent-stream-error', handleStreamError)
+      window.electronAPI.ipcRenderer.removeListener('ai-stream-part', handleStreamPart)
+      window.electronAPI.ipcRenderer.removeListener('ai-stream-complete', handleStreamComplete)
+      window.electronAPI.ipcRenderer.removeListener('claude-code-event', handleClaudeCodeEvent)
     }
   }, [])
 
   const handleSendMessage = async () => {
-    if (!chatState.inputValue.trim() || chatState.isLoading) return
-
-    console.log('🔄 handleSendMessage: Starting')
-    console.log('📄 currentNote:', currentNote)
-    console.log('📄 currentNote.content:', currentNote?.content)
+    if (!inputValue.trim() || isLoading) return
 
     const userMessage: UnifiedMessage = {
       id: Date.now().toString(),
-      content: chatState.inputValue,
+      content: inputValue,
       role: 'user',
       blocks: [{
         id: 'user-text',
         type: 'text',
         status: 'completed',
-        data: { text: chatState.inputValue }
+        data: { text: inputValue }
       }],
       metadata: {
-      timestamp: new Date()
-      }
+        timestamp: new Date()
+      },
+      toolInvocations: []
     }
 
-    chatState.setMessages(prev => [...prev, userMessage])
-    chatState.setInputValue('')
-    chatState.setIsLoading(true)
+    setMessages(prev => [...prev, userMessage])
+    setInputValue('')
+    setIsLoading(true)
 
-    try {
-      const allMessages = [...chatState.messages, userMessage]
-      
-      if (currentNote && currentNote.content && currentNote.content.trim()) {
-        console.log('📄 Adding document content to prompt:', currentNote.content.length, 'characters')
-        const systemMessage: UnifiedMessage = {
-          id: 'system-document',
-          content: `Current document content:\n\n${currentNote.content}\n\nWhen editing the document, you can see the current content above. Use the document-editor tool to make changes.`,
-          role: 'assistant',
-          blocks: [{
-            id: 'system-text',
-            type: 'text',
-            status: 'completed',
-            data: { text: `Current document content:\n\n${currentNote.content}\n\nWhen editing the document, you can see the current content above. Use the document-editor tool to make changes.` }
-          }],
-          metadata: {
-            timestamp: new Date()
-          }
-        }
-        allMessages.unshift(systemMessage)
-      } else {
-        console.log('📄 No document content to add - currentNote:', !!currentNote, 'content:', currentNote?.content?.length || 0)
-      }
-      
-      console.log('📄 Final allMessages:', allMessages.length, 'messages')
-      
-      const response = await window.electronAPI.ai.agentStream(allMessages)
-      console.log('📡 handleSendMessage: Response received:', response)
-      
-      if (!response.success) {
-        console.log('❌ handleSendMessage: Response failed')
-        chatState.setIsLoading(false)
-        const errorMessage: UnifiedMessage = {
-          id: (Date.now() + 1).toString(),
-          content: `Error: ${response.error || 'Task failed'}`,
-          role: 'assistant',
-          blocks: [{
-            id: 'error',
-            type: 'text',
-            status: 'error',
-            data: { text: `Error: ${response.error || 'Task failed'}` }
-          }],
-          metadata: {
-          timestamp: new Date()
-          }
-        }
-        chatState.setMessages(prev => [...prev, errorMessage])
-      }
-    } catch (error) {
-      console.log('❌ handleSendMessage: Exception:', error)
-      chatState.setIsLoading(false)
-      const errorMessage: UnifiedMessage = {
-        id: (Date.now() + 1).toString(),
-        content: `Error: ${error}`,
+    const allMessages = [...messages, userMessage]
+    
+    if (currentNote && currentNote.content && currentNote.content.trim()) {
+      const systemMessage: UnifiedMessage = {
+        id: 'system-document',
+        content: `Current document content:\n\n${currentNote.content}`,
         role: 'assistant',
-        blocks: [{
-          id: 'error',
-          type: 'text',
-          status: 'error',
-          data: { text: `Error: ${error}` }
-        }],
-        metadata: {
-        timestamp: new Date()
-        }
+        blocks: [],
+        metadata: { timestamp: new Date() },
+        toolInvocations: []
       }
-      chatState.setMessages(prev => [...prev, errorMessage])
+      allMessages.unshift(systemMessage)
+    }
+    
+    const payload = {
+      messages: allMessages,
+      noteId: currentNote?.id,
+      noteContent: currentNote?.content
+    }
+    const response = await (window.electronAPI.ai.agentStream as any)(payload)
+    
+    if (!response.success) {
+      console.log('❌ handleSendMessage: Response failed')
+      setIsLoading(false)
     }
   }
-
-
 
   return (
     <div className="w-[480px] h-full bg-background border-l border-border flex flex-col">
@@ -195,29 +170,33 @@ export function AgentChat({ onToggle, currentNote }: Omit<AgentChatProps, 'isOpe
         </div>
         
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 p-4 overflow-y-auto">
-            <div ref={scrollRef} className="space-y-4">
-              {chatState.messages.length === 0 && !chatState.streamingMessage ? (
+          <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto">
+            <div className="space-y-4">
+              {messages.length === 0 && !streamingMessage ? (
                 <div className="text-center text-muted-foreground py-8">
                   <div className="text-sm opacity-50">No messages yet</div>
                 </div>
               ) : (
                 <>
-                  {chatState.messages.map((message) => (
+                  {messages.map((message) => (
                     <AgentMessage
                       key={message.id}
                       message={message}
+                      currentNote={currentNote}
+                      onApplyChanges={onApplyChanges}
                     />
                   ))}
-                  {chatState.streamingMessage && (
+                  {streamingMessage && (
                     <AgentMessage 
-                      key={chatState.streamingMessage.id} 
-                      message={chatState.streamingMessage} 
+                      key={streamingMessage.id} 
+                      message={streamingMessage} 
+                      currentNote={currentNote}
+                      onApplyChanges={onApplyChanges}
                     />
                   )}
                 </>
               )}
-              {chatState.isLoading && !chatState.streamingMessage && (
+              {isLoading && !streamingMessage && (
                 <div className="flex gap-3 justify-start">
                   <div className="flex gap-2 max-w-[85%]">
                     <div className="bg-muted rounded-lg px-3 py-2">
@@ -237,12 +216,12 @@ export function AgentChat({ onToggle, currentNote }: Omit<AgentChatProps, 'isOpe
             <DocumentPreview currentNote={currentNote} />
             
             <ChatInput
-              value={chatState.inputValue}
-              onChange={chatState.setInputValue}
+              value={inputValue}
+              onChange={setInputValue}
               onSubmit={handleSendMessage}
-              loading={chatState.isLoading}
+              loading={isLoading}
               placeholder="Ask me anything..."
-              disabled={chatState.isLoading}
+              disabled={isLoading}
             />
           </div>
         </div>

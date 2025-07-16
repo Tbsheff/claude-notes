@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -67,4 +67,27 @@ export async function getCurrentDocument(): Promise<string> {
     console.error('❌ getCurrentDocument error:', error)
     return ''
   }
+} 
+
+export async function getNoteContent(noteId: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!mainWindow) {
+      return reject(new Error('Main window is not available'))
+    }
+    
+    const channel = `document-content-response-${noteId}`
+    
+    const listener = (_event: any, content: string) => {
+      ipcMain.removeListener(channel, listener)
+      resolve(content)
+    }
+    ipcMain.once(channel, listener)
+
+    mainWindow.webContents.send('get-document-content', { noteId })
+
+    setTimeout(() => {
+      ipcMain.removeListener(channel, listener)
+      reject(new Error('Timeout waiting for document content response'))
+    }, 5000)
+  })
 } 

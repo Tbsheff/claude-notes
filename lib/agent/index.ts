@@ -1,19 +1,22 @@
 import { streamText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { claudeCodeTool } from '../tools/claude-code'
-import { documentEditorTool } from '../tools/document-editor'
+import { createClaudeCodeTool } from '../tools/claude-code'
+import { createDocumentEditorTool } from '../tools/document-editor'
 
-export function createAgentStream(messages: any[], options: any = {}) {
-  console.log('🎬 createAgentStream: Creating stream with messages:', messages.length)
-  
+export function createAgentStream(messages: any[], options: { noteId?: string, noteContent?: string, mainWindow?: any } = {}) {
+  const tools: any = {
+    'claude-code': createClaudeCodeTool(options.mainWindow),
+    'document-editor': createDocumentEditorTool({ 
+      noteId: options.noteId || '',
+      noteContent: options.noteContent || ''
+    })
+  }
+
   return streamText({
     model: anthropic('claude-3-5-sonnet-20241022'),
     messages,
     toolCallStreaming: true,
-    tools: {
-      'claude-code': claudeCodeTool,
-      'document-editor': documentEditorTool
-    },
+    tools,
     onChunk({ chunk }) {
       console.log('🧩 onChunk: Full chunk:', JSON.stringify(chunk, null, 2))
     },
@@ -27,7 +30,5 @@ export function createAgentStream(messages: any[], options: any = {}) {
   })
 }
 
-export { claudeCodeTool } from '../tools/claude-code'
-export { MessageParser } from './message-parser'
-export { StreamHandler } from './stream-handler'
-export * from './types' 
+export * from './types'
+export * from './part-processor' 

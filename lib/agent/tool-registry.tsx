@@ -1,34 +1,30 @@
-import React from 'react'
-import { ToolBlock } from './types'
+import { FC } from 'react'
+import { ToolBlock, Note } from './types'
 
 export interface ToolComponentProps {
-  block: ToolBlock
+  block: ToolBlock;
+  currentNote?: Note;
+  onApplyChanges?: (newContent: string) => void;
 }
 
-export type ToolComponent = React.ComponentType<ToolComponentProps>
-
 class ToolRegistry {
-  private components: Map<string, ToolComponent> = new Map()
+  private components = new Map<string, React.FC<ToolComponentProps>>()
 
-  register(toolName: string, component: ToolComponent) {
+  register(toolName: string, component: React.FC<ToolComponentProps>) {
     this.components.set(toolName, component)
   }
 
-  get(toolName: string): ToolComponent | undefined {
+  get(toolName: string): React.FC<ToolComponentProps> | undefined {
     return this.components.get(toolName)
-  }
-
-  has(toolName: string): boolean {
-    return this.components.has(toolName)
   }
 }
 
 export const toolRegistry = new ToolRegistry()
 
-export function getToolComponent(toolName: string): ToolComponent | undefined {
+export function getToolComponent(toolName: string): React.FC<ToolComponentProps> | undefined {
   return toolRegistry.get(toolName)
 }
 
 export function hasToolComponent(toolName: string): boolean {
-  return toolRegistry.has(toolName)
+  return toolRegistry.get(toolName) !== undefined
 } 

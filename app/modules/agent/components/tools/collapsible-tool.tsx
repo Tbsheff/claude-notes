@@ -28,9 +28,9 @@ export const CollapsibleTool = ({
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <div className="flex gap-2 items-start max-w-lg md:max-w-2xl">
+        <div className="flex gap-2 items-start w-full max-w-lg md:max-w-2xl">
           <div 
-            className={cn("flex flex-col w-full max-w-lg md:max-w-2xl", className)}
+            className={cn("flex flex-col w-full", className)}
             data-testid={dataTestId}
           >
             <Button 
@@ -61,9 +61,9 @@ export const CollapsibleTool = ({
                     ease: "easeInOut",
                     opacity: { duration: 0.2 }
                   }}
-                  className="overflow-hidden"
+                  className="overflow-hidden w-full"
                 >
-                  <div className="bg-muted/50 p-3 rounded-md border border-muted mt-2 max-w-lg md:max-w-2xl">
+                  <div className="bg-muted/50 p-3 rounded-md border border-muted mt-2 w-full">
                     <motion.div 
                       initial={{ y: -10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}

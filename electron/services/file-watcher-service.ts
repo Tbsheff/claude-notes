@@ -31,10 +31,22 @@ export function setupFileWatcher(getMainWindow: () => any, getChangedFiles: () =
       console.log('📝', [...changed].join(', '))
       try {
         const proc = spawn('npm', ['run', 'build'], { stdio: 'inherit' })
-        proc.on('close', (code) => {
+        proc.on('close', async (code) => {
           const win = getMainWindow()
           if (code === 0) {
             console.log('✅ Rebuilt, reloading…')
+            
+            try {
+              const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
+              ClaudeCodeLogger.emitGlobalEvent({ 
+                type: 'tool_action', 
+                message: 'Rebuild completed', 
+                icon: '✅' 
+              })
+            } catch (e) {
+              console.error('Failed to emit rebuild completion event:', e)
+            }
+            
             win?.reload()
           } else {
             console.error('❌ Build failed')

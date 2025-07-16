@@ -7,6 +7,6 @@ export const setMainWindow = aiService.setMainWindow
 export function setupAIHandlers(rebuildCallback: () => void) {
   ipcMain.handle('ai:initialize', () => aiService.initializeAI({}))
   ipcMain.handle('ai:process-request', (_: any, message: string) => aiService.processRequest(message, rebuildCallback))
-  ipcMain.handle('ai:agent-stream', (_: any, messages: any[]) => aiService.createAgentStream(messages, rebuildCallback))
+  ipcMain.handle('ai:agent-stream', (_: any, payload: { messages: any[], noteId?: string, noteContent?: string }) => aiService.createAgentStream(payload, rebuildCallback))
   ipcMain.handle('llm:call', (_: any, messages: any, model: string) => aiService.llmCall(messages, model))
 } 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, Menu, Sparkles, Calendar } from 'lucide-react'
+import { Download, Menu, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
 import { SettingsDialog } from './editor-settings-dialog'
@@ -47,7 +47,6 @@ export function NoteEditorHeader({ isBuilding, buildStatus, content, onToggleCha
     <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-background">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
           {formatDateTime(createdAt)}
         </div>
       </div>

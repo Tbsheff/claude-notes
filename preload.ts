@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ai: {
     initialize: (config) => ipcRenderer.invoke('ai:initialize', config),
     processRequest: (message) => ipcRenderer.invoke('ai:process-request', message),
-    agentStream: (messages) => ipcRenderer.invoke('ai:agent-stream', messages)
+    agentStream: (payload) => ipcRenderer.invoke('ai:agent-stream', payload)
   },
   llmCall: (messages, model) => ipcRenderer.invoke('llm:call', messages, model),
   notes: {
@@ -30,17 +30,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resetFeatures: (repoUrl) => ipcRenderer.invoke('general:resetFeatures', repoUrl)
   },
   ipcRenderer: {
-    on: (channel, listener) => ipcRenderer.on(channel, listener),
-    removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener),
+    on: (channel, listener) => {
+      const validChannels = [
+        'claude-event', 
+        'claude-code-event',
+        'ai-stream-part', 
+        'ai-stream-complete', 
+        'ai-stream-error'
+      ]
+      if (validChannels.includes(channel)) {
+        ipcRenderer.on(channel, listener)
+      }
+    },
+    removeListener: (channel, listener) => {
+      const validChannels = [
+        'claude-event',
+        'claude-code-event',
+        'ai-stream-part',
+        'ai-stream-complete',
+        'ai-stream-error'
+      ]
+      if (validChannels.includes(channel)) {
+        ipcRenderer.removeListener(channel, listener)
+      }
+    },
     send: (channel, ...args) => ipcRenderer.send(channel, ...args)
   },
   document: {
     update: (request) => ipcRenderer.invoke('document:update', request),
     getContent: () => ipcRenderer.invoke('document:get-content')
   }
-})
-
-contextBridge.exposeInMainWorld('claudeEvents', {
-  on: (listener: (...args: any[]) => void) => ipcRenderer.on('claude-event', listener),
-  off: (listener: (...args: any[]) => void) => ipcRenderer.removeListener('claude-event', listener)
 }) 

@@ -135,9 +135,11 @@ export interface ClaudeEvent {
   icon: string
   timestamp: number
   tool_use_id?: string
+  toolCallId?: string
 }
 
 let eventCallback: ((event: ClaudeEvent) => void) | null = null
+let currentToolCallId: string | null = null
 
 export class ClaudeCodeLogger {
   static setEventCallback(callback: (event: ClaudeEvent) => void) {
@@ -148,8 +150,22 @@ export class ClaudeCodeLogger {
     return eventCallback
   }
 
+  static setCurrentToolCallId(toolCallId: string) {
+    currentToolCallId = toolCallId
+  }
+
+  static getCurrentToolCallId() {
+    return currentToolCallId
+  }
+
   static emitEvent(event: Omit<ClaudeEvent, 'timestamp'>) {
     if (eventCallback) eventCallback({ ...event, timestamp: Date.now() })
+  }
+
+  static emitGlobalEvent(event: Omit<ClaudeEvent, 'timestamp'>) {
+    if (eventCallback && currentToolCallId) {
+      eventCallback({ ...event, timestamp: Date.now(), toolCallId: currentToolCallId })
+    }
   }
 
   static logMessage(msg: SDKMessage) {

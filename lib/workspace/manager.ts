@@ -187,6 +187,13 @@ export class WorkspaceManager {
     
     if (changedFiles.length > 0) {
       console.log('📋 Applying', changedFiles.length, 'changed files to main project')
+      
+      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
+      ClaudeCodeLogger.emitEvent({ 
+        type: 'tool_action', 
+        message: `Applying ${changedFiles.length} changed files to main project...`, 
+        icon: '📋' 
+      })
     } else {
       console.log('ℹ️ No files were changed by Claude')
     }

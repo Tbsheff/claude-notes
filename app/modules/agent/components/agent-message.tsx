@@ -4,35 +4,40 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
 import { CollapsibleTool } from './tools/collapsible-tool'
-import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
+import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock, Note } from '@/lib/agent/types'
 import { getToolComponent } from '@/lib/agent/tool-registry'
 import './tools/claude-code-tool-view'
 import './tools/document-editor-tool-view'
 import equal from 'fast-deep-equal'
 
 const renderTextBlock = (block: TextBlock, isUser: boolean) => {
+  if (isUser) {
+    return (
+      <div className="px-3 py-2 rounded-2xl text-sm break-words bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto">
+        {block.data.text}
+      </div>
+    )
+  }
+  
   return (
-    <div
-      className={cn(
-        "px-3 py-2 rounded-2xl text-sm break-words",
-        isUser
-          ? "bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto"
-          : "bg-muted max-w-lg md:max-w-2xl",
-      )}
-    >
+    <div className="text-sm break-words text-foreground max-w-lg md:max-w-2xl">
       {block.data.text}
     </div>
   )
 }
 
-const renderToolBlock = (block: ToolBlock) => {
+const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (newContent: string) => void) => {
   const { toolName, toolCallId, args, result, logs } = block.data
   const isExecuting = block.status === 'executing'
   const isCompleted = block.status === 'completed'
   
   const ToolComponent = getToolComponent(toolName)
   if (ToolComponent) {
-    return <ToolComponent block={block} />
+    return (
+      <div className="w-full max-w-lg md:max-w-2xl">
+        <ToolComponent block={block} currentNote={currentNote} onApplyChanges={onApplyChanges} />
+      </div>
+    )
   }
   
   const getTitle = () => {
@@ -99,54 +104,30 @@ const renderThinkingBlock = (block: ThinkingBlock) => {
   )
 }
 
-const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message }) => {
+const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, currentNote, onApplyChanges }) => {
   const isUser = message.role === 'user'
 
   const messageContent = useMemo(() => {
     const elements: React.ReactNode[] = []
-
-    if (message.content?.trim() && message.blocks.length === 0) {
-      elements.push(
-        <div
-          key={`message-${message.id}-content`}
-          className={cn(
-            "px-3 py-2 rounded-2xl text-sm break-words",
-            isUser
-              ? "bg-primary text-primary-foreground max-w-lg md:max-w-2xl ml-auto"
-              : "bg-muted max-w-lg md:max-w-2xl",
-          )}
-        >
-          {message.content}
-        </div>
-      )
-    }
-
+ 
     message.blocks.forEach((block, index) => {
       const key = `message-${message.id}-block-${index}`
-
+ 
       if (block.type === 'text') {
-        elements.push(
-          <div key={key}>
-            {renderTextBlock(block as TextBlock, isUser)}
-          </div>
-        )
+        elements.push(<div key={key}>{renderTextBlock(block as TextBlock, isUser)}</div>)
       } else if (block.type === 'tool') {
         elements.push(
           <div key={key}>
-            {renderToolBlock(block as ToolBlock)}
+            {renderToolBlock(block as ToolBlock, currentNote, onApplyChanges)}
           </div>
         )
       } else if (block.type === 'thinking') {
-        elements.push(
-          <div key={key}>
-            {renderThinkingBlock(block as ThinkingBlock)}
-          </div>
-        )
+        elements.push(<div key={key}>{renderThinkingBlock(block as ThinkingBlock)}</div>)
       }
     })
-
+ 
     return elements
-  }, [message.blocks, message.content, message.id, isUser])
+  }, [message.blocks, message.id, isUser])
 
   return (
     <motion.div
@@ -155,14 +136,6 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message }) => {
       animate={{ y: 0, opacity: 1 }}
     >
       <div className={cn("flex gap-4 w-full mb-4", isUser ? "justify-end" : "justify-start")}>
-        {!isUser && (
-          <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-            <div className="translate-y-px">
-              <SparklesIcon size={14} className="text-foreground" />
-            </div>
-          </div>
-        )}
-
         <div className={cn("flex flex-col space-y-2", isUser ? "items-end max-w-[90%]" : "items-start max-w-[90%]")}>
           {messageContent}
         </div>
@@ -191,11 +164,6 @@ export const ThinkingMessage = memo(() => {
       animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
     >
       <div className="flex gap-4 w-full justify-start mb-4">
-        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-          <div className="translate-y-px">
-            <SparklesIcon size={14} className="text-foreground" />
-          </div>
-        </div>
         <div className="flex flex-col gap-2 max-w-[75%]">
           <div className="p-3 rounded-2xl text-sm bg-muted text-muted-foreground">
             Thinking...
