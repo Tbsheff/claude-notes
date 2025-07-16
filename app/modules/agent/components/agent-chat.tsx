@@ -5,9 +5,10 @@ import { ChatInput } from './agnet-chat-input'
 import { AgentMessage } from './agent-message'
 import { DocumentPreview } from './document-preview'
 import { UnifiedMessage } from '@/lib/agent/types'
-import { processStreamParts, addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/agent/part-processor'
+import { processStreamParts, handleClaudeCodeEvent } from '@/lib/agent/part-processor'
+import { cn } from '@/lib/utils'
 
-export function AgentChat({ onToggle, currentNote, onApplyChanges }: any) {
+export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any) {
   const [messages, setMessages] = useState<UnifiedMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -49,56 +50,18 @@ export function AgentChat({ onToggle, currentNote, onApplyChanges }: any) {
       setIsLoading(false)
     }
 
-    const handleClaudeCodeEvent = (_event: any, event: any) => {
-      console.log('🔥 [agent-chat] Received claude-code-event:', event)
-      if (event.toolCallId) {
-        console.log('🔥 [agent-chat] Adding log for toolCallId:', event.toolCallId)
-        addClaudeCodeLog(event.toolCallId, event)
-        
-        // Force update streaming message with new logs
-        setStreamingMessage(prevStreamingMessage => {
-          if (prevStreamingMessage) {
-            console.log('🔥 [agent-chat] Force updating streaming message:', prevStreamingMessage.id)
-            const currentParts = streamPartsRef.current[prevStreamingMessage.id] || []
-            const msg = processStreamParts(prevStreamingMessage.id, currentParts)
-            
-            // Force new object reference to trigger re-render
-            return {
-              ...msg,
-              blocks: msg.blocks.map(block => {
-                // If this is a claude-code block, update its logs and status
-                if (block.data.toolName === 'claude-code') {
-                  const freshLogs = getClaudeCodeLogs(block.data.toolCallId)
-                  const status = getClaudeCodeStatus(block.data.toolCallId)
-                  return {
-                    ...block,
-                    data: { 
-                      ...block.data,
-                      logs: [...freshLogs], // Always get fresh logs
-                      currentStatus: status // Add status for UI
-                    }
-                  }
-                }
-                return {
-                  ...block,
-                  data: { ...block.data }
-                }
-              })
-            }
-          }
-          return prevStreamingMessage
-        })
-      }
+    const handleClaudeCodeEventLocal = (_event: any, event: any) => {
+      handleClaudeCodeEvent(event, streamingMessage, streamPartsRef, setStreamingMessage)
     }
 
     window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
     window.electronAPI.ipcRenderer.on('ai-stream-complete', handleStreamComplete)
-    window.electronAPI.ipcRenderer.on('claude-code-event', handleClaudeCodeEvent)
+    window.electronAPI.ipcRenderer.on('claude-code-event', handleClaudeCodeEventLocal)
 
     return () => {
       window.electronAPI.ipcRenderer.removeListener('ai-stream-part', handleStreamPart)
       window.electronAPI.ipcRenderer.removeListener('ai-stream-complete', handleStreamComplete)
-      window.electronAPI.ipcRenderer.removeListener('claude-code-event', handleClaudeCodeEvent)
+      window.electronAPI.ipcRenderer.removeListener('claude-code-event', handleClaudeCodeEventLocal)
     }
   }, [])
 
@@ -153,8 +116,11 @@ export function AgentChat({ onToggle, currentNote, onApplyChanges }: any) {
   }
 
   return (
-    <div className="w-[480px] h-full bg-background border-l border-border flex flex-col">
-      <div className="h-full flex flex-col">
+    <div className={cn(
+      "h-full bg-background border-l border-border flex flex-col transition-[width] duration-200 ease-linear",
+      isOpen ? "w-[480px]" : "w-0 overflow-hidden"
+    )}>
+              <div className="h-full flex flex-col min-w-[480px]">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-foreground">AI Agent</h3>

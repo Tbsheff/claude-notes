@@ -8,6 +8,7 @@ import { editorApi } from '../api'
 import { Note } from '@/app/modules/editor/api'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
 import { AgentChat } from '@/app/modules/agent/components/agent-chat'
+import { cn } from '@/lib/utils'
 
 function EditorContent() {
   const [content, setContent] = useState('')
@@ -63,6 +64,18 @@ function EditorContent() {
       window.electronAPI.ipcRenderer.removeListener('get-document-content', handleGetDocumentContent)
     }
   }, [content, currentNote, getMarkdownContent])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault()
+        toggleChat()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [toggleChat])
 
   const saveCurrentNote = async () => {
     if (!currentNote) return
@@ -255,16 +268,16 @@ function EditorContent() {
         <Editor value={content} onChange={setContent} onBuild={handleBuild} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
-      {isChatOpen && (
-        <AgentChat 
-          onToggle={toggleChat} 
-          currentNote={currentNote ? {
-            ...currentNote,
-            content: getMarkdownContent()
-          } : undefined}
-          onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
-        />
-      )}
+      
+      <AgentChat 
+        isOpen={isChatOpen}
+        onToggle={toggleChat} 
+        currentNote={currentNote ? {
+          ...currentNote,
+          content: getMarkdownContent()
+        } : undefined}
+        onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
+      />
     </div>
   )
 }

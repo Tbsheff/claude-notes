@@ -55,14 +55,7 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: 
   }
 
   const getActionIcon = () => {
-    const action = isExecuting ? displayAction : result?.action
-    switch (action) {
-      case 'replace': return <Replace className="h-4 w-4" />
-      case 'append': return <Plus className="h-4 w-4" />
-      case 'prepend': return <Plus className="h-4 w-4" />
-      case 'delete': return <Minus className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
-    }
+    return <FileText className="h-4 w-4" />
   }
 
   const getActionText = () => {
@@ -71,39 +64,67 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: 
       case 'append': return 'appending'
       case 'prepend': return 'prepending'
       case 'delete': return 'deleting'
+      case 'create': return 'creating'
       default: return 'editing'
     }
+  }
+
+  const getDocumentTitle = () => {
+    if (result?.success && result.action === 'create' && result.newNote) {
+      return result.newNote.title
+    }
+    if (result?.success && result.action === 'delete') {
+      return currentNote?.title || 'Document'
+    }
+    return currentNote?.title || 'Document'
   }
   
   if (isExecuting) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2 max-w-md">
         <Loader2 className="h-4 w-4 animate-spin" />
         <FileText className="h-4 w-4" />
-        <span className="font-medium">{currentNote?.title || 'Document'}</span>
-        <span className="text-xs">({getActionText()}...)</span>
+        <span className="font-medium">{getDocumentTitle()}</span>
       </div>
     )
   }
 
-  if (result?.success && result.oldContent && result.newContent) {
+  if (result?.success) {
     return (
       <div className="bg-muted/50 rounded-lg overflow-hidden border">
         <div className="flex items-center gap-2 text-sm p-3 border-b">
           {getActionIcon()}
-          <span className="font-medium">{currentNote?.title || 'Document'}</span>
-          <span className="text-xs">({result.action})</span>
-          {isApplied && <Badge variant="secondary">✓ Applied</Badge>}
-          {isDeclined && <Badge variant="secondary">✗ Declined</Badge>}
+          <span className="font-medium">{getDocumentTitle()}</span>
+          <span className="text-xs">{result.action}</span>
         </div>
-        <div className="p-3 text-xs max-h-48 overflow-y-auto font-mono whitespace-pre-wrap">
-          {renderDiff(result.oldContent, result.newContent)}
-        </div>
-        {!(isApplied || isDeclined) && (
-          <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
-            <Button variant="outline" size="sm" onClick={handleDecline}><X className="h-3 w-3 mr-1" /> Decline</Button>
-            <Button size="sm" onClick={handleApply}><Check className="h-3 w-3 mr-1" /> Apply</Button>
-          </div>
+        {result.oldContent && result.newContent && (
+          <>
+            <div className="p-3 text-xs max-h-48 overflow-y-auto font-mono whitespace-pre-wrap">
+              {renderDiff(result.oldContent, result.newContent)}
+            </div>
+            {!(isApplied || isDeclined) && (
+              <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
+                <Button variant="outline" size="sm" onClick={handleDecline}><X className="h-3 w-3 mr-1" /> Decline</Button>
+                <Button size="sm" onClick={handleApply}><Check className="h-3 w-3 mr-1" /> Apply</Button>
+              </div>
+            )}
+            {isApplied && (
+              <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
+                <span className="text-sm text-green-600 flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Applied
+                </span>
+              </div>
+            )}
+            {isDeclined && (
+              <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
+                <span className="text-sm text-red-600 flex items-center gap-1">
+                  <X className="h-3 w-3" />
+                  Declined
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     )

@@ -1,4 +1,5 @@
 import { UnifiedMessage, MessageBlock } from './types'
+import { MutableRefObject, Dispatch, SetStateAction } from 'react'
 
 // Global store for Claude Code events by toolCallId
 const toolCallLogs: Record<string, any[]> = {}
@@ -131,5 +132,46 @@ export function processStreamParts(
       isStreaming: true
     },
     toolInvocations: Object.values(toolCalls)
+  }
+} 
+
+export function handleClaudeCodeEvent(
+  event: any,
+  streamingMessage: UnifiedMessage | null,
+  streamPartsRef: MutableRefObject<Record<string, any[]>>,
+  setStreamingMessage: Dispatch<SetStateAction<UnifiedMessage | null>>
+): void {
+  if (event.toolCallId) {
+    addClaudeCodeLog(event.toolCallId, event)
+    
+    setStreamingMessage(prevStreamingMessage => {
+      if (prevStreamingMessage) {
+        const currentParts = streamPartsRef.current[prevStreamingMessage.id] || []
+        const msg = processStreamParts(prevStreamingMessage.id, currentParts)
+        
+        return {
+          ...msg,
+          blocks: msg.blocks.map(block => {
+            if (block.data.toolName === 'claude-code') {
+              const freshLogs = getClaudeCodeLogs(block.data.toolCallId)
+              const status = getClaudeCodeStatus(block.data.toolCallId)
+              return {
+                ...block,
+                data: { 
+                  ...block.data,
+                  logs: [...freshLogs], 
+                  currentStatus: status 
+                }
+              }
+            }
+            return {
+              ...block,
+              data: { ...block.data }
+            }
+          })
+        }
+      }
+      return prevStreamingMessage
+    })
   }
 } 
