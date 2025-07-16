@@ -99,14 +99,14 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: 
         </div>
         {result.oldContent && result.newContent && (
           <>
-            <div className="p-3 text-xs max-h-48 overflow-y-auto font-mono whitespace-pre-wrap">
-              {renderDiff(result.oldContent, result.newContent)}
-            </div>
-            {!(isApplied || isDeclined) && (
-              <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
-                <Button variant="outline" size="sm" onClick={handleDecline}><X className="h-3 w-3 mr-1" /> Decline</Button>
-                <Button size="sm" onClick={handleApply}><Check className="h-3 w-3 mr-1" /> Apply</Button>
-              </div>
+        <div className="p-3 text-xs max-h-48 overflow-y-auto font-mono whitespace-pre-wrap">
+          {renderDiff(result.oldContent, result.newContent)}
+        </div>
+        {!(isApplied || isDeclined) && (
+          <div className="flex justify-end gap-2 p-2 border-t bg-background/50">
+            <Button variant="outline" size="sm" onClick={handleDecline}><X className="h-3 w-3 mr-1" /> Decline</Button>
+            <Button size="sm" onClick={handleApply}><Check className="h-3 w-3 mr-1" /> Apply</Button>
+          </div>
             )}
             {isApplied && (
               <div className="flex justify-end gap-2 p-2 border-t bg-background/50">

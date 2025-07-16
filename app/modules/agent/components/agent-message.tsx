@@ -34,7 +34,7 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
   const ToolComponent = getToolComponent(toolName)
   if (ToolComponent) {
     return (
-      <div className="w-full max-w-lg md:max-w-2xl">
+      <div className="w-full max-w-xl md:max-w-3xl">
         <ToolComponent block={block} currentNote={currentNote} onApplyChanges={onApplyChanges} />
       </div>
     )

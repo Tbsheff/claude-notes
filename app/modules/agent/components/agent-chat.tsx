@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
 import { AgentMessage } from './agent-message'
-import { DocumentPreview } from './document-preview'
+import { DocumentPreview } from './document-card'
 import { UnifiedMessage } from '@/lib/agent/types'
 import { processStreamParts, handleClaudeCodeEvent } from '@/lib/agent/part-processor'
 import { cn } from '@/lib/utils'
@@ -117,10 +117,10 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
 
   return (
     <div className={cn(
-      "h-full bg-background border-l border-border flex flex-col transition-[width] duration-200 ease-linear",
+      "h-full bg-background border-l border-border flex flex-col flex-shrink-0 transition-[width] duration-200 ease-linear",
       isOpen ? "w-[480px]" : "w-0 overflow-hidden"
     )}>
-              <div className="h-full flex flex-col min-w-[480px]">
+      <div className="h-full flex flex-col w-full">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-foreground">AI Agent</h3>

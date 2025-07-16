@@ -257,7 +257,7 @@ function EditorContent() {
         onCreateNote={createNewNote}
         onDeleteNote={handleDeleteNote}
       />
-      <SidebarInset className="flex flex-col flex-1">
+      <SidebarInset className="flex flex-col flex-1 min-h-0 overflow-y-auto">
         <NoteEditorHeader
           createdAt={createdAt}
           isBuilding={isBuilding}
@@ -269,15 +269,15 @@ function EditorContent() {
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
       
-      <AgentChat 
+        <AgentChat 
         isOpen={isChatOpen}
-        onToggle={toggleChat} 
-        currentNote={currentNote ? {
-          ...currentNote,
-          content: getMarkdownContent()
-        } : undefined}
-        onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
-      />
+          onToggle={toggleChat} 
+          currentNote={currentNote ? {
+            ...currentNote,
+            content: getMarkdownContent()
+          } : undefined}
+          onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
+        />
     </div>
   )
 }
