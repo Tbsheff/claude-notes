@@ -5,6 +5,7 @@
   "main": "dist-electron/electron.js",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "NODE_ENV=development npm run build:electron && electron .",
     "build": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",

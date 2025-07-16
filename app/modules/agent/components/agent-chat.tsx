@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { X } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
 import { AgentMessage } from './agent-message'
@@ -22,7 +21,7 @@ function useChatState() {
   }
 }
 
-export function AgentChat({ isOpen, onToggle, currentNote }: AgentChatProps) {
+export function AgentChat({ onToggle, currentNote }: Omit<AgentChatProps, 'isOpen'>) {
   const chatState = useChatState()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -179,13 +178,8 @@ export function AgentChat({ isOpen, onToggle, currentNote }: AgentChatProps) {
 
 
   return (
-    <div 
-      className={`h-full bg-background border-l border-border flex flex-col transition-all duration-300 ease-in-out ${
-        isOpen ? 'w-[480px]' : 'w-0'
-      }`}
-      style={{ minWidth: isOpen ? '480px' : '0' }}
-    >
-      <div className={`h-full flex flex-col ${isOpen ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
+    <div className="w-[480px] h-full bg-background border-l border-border flex flex-col">
+      <div className="h-full flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-foreground">AI Agent</h3>
@@ -200,8 +194,8 @@ export function AgentChat({ isOpen, onToggle, currentNote }: AgentChatProps) {
           </Button>
         </div>
         
-        <div className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 p-4">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 p-4 overflow-y-auto">
             <div ref={scrollRef} className="space-y-4">
               {chatState.messages.length === 0 && !chatState.streamingMessage ? (
                 <div className="text-center text-muted-foreground py-8">
@@ -237,7 +231,7 @@ export function AgentChat({ isOpen, onToggle, currentNote }: AgentChatProps) {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
           
           <div className="p-4 space-y-3">
             <DocumentPreview currentNote={currentNote} />

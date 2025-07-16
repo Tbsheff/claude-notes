@@ -186,19 +186,26 @@ async function setupToolLogging(streamId: string, streamHandler: StreamHandler) 
 async function processStreamChunks(stream: any, streamHandler: StreamHandler, logManager: any, rebuildCallback?: () => void) {
   try {
         for await (const chunk of stream.fullStream) {
+          console.log('🧩 onChunk: Full chunk:', JSON.stringify(chunk, null, 2))
+          
           if (chunk.type === 'text-delta') {
         const fullText = streamHandler.getCurrentMessage()?.content || ''
         streamHandler.handleTextChunk(chunk.textDelta, fullText + chunk.textDelta)
+          } else if (chunk.type === 'tool-call-streaming-start') {
+            console.log('🚀 Tool call streaming start:', chunk.toolName, chunk.toolCallId)
+            streamHandler.handleToolCall(chunk.toolName, chunk.toolCallId, {})
+          } else if (chunk.type === 'tool-call-delta') {
+            console.log('📝 Tool call delta:', chunk.toolCallId, chunk.argsTextDelta)
+            streamHandler.handleToolCallDelta(chunk.toolCallId, chunk.argsTextDelta)
           } else if (chunk.type === 'tool-call') {
+            console.log('🔧 Tool call:', chunk.toolName, chunk.toolCallId)
             if (chunk.toolName === 'claude-code') {
           logManager.startLogging(chunk.toolCallId)
         }
         streamHandler.handleToolCall(chunk.toolName, chunk.toolCallId, chunk.args)
-          } else if ((chunk as any).type === 'tool-call-delta') {
-        const { toolCallId, argsTextDelta } = chunk as any
-        streamHandler.handleToolCallDelta(toolCallId, argsTextDelta)
           } else if ((chunk as any).type === 'tool-result') {
             const { toolCallId, toolName, result } = chunk as any
+            console.log('✅ Tool result:', toolName, toolCallId)
             
         if (toolName === 'claude-code') {
           const logs = logManager.finishLogging()

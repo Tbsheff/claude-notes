@@ -9,6 +9,7 @@ export function createAgentStream(messages: any[], options: any = {}) {
   return streamText({
     model: anthropic('claude-3-5-sonnet-20241022'),
     messages,
+    toolCallStreaming: true,
     tools: {
       'claude-code': claudeCodeTool,
       'document-editor': documentEditorTool

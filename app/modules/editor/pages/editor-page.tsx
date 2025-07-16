@@ -100,17 +100,17 @@ function EditorContent() {
       const res = await editorApi.loadNote(note.id)
       if (res.success && res.data) {
         setCurrentNote(res.data)
-        setContent(markdownToHtml(res.data.content))
-        setLastSavedContent(res.data.content)
+        setContent(markdownToHtml(res.data.content || ''))
+        setLastSavedContent(res.data.content || '')
       } else {
         setCurrentNote(note)
-        setContent(markdownToHtml(note.content))
-        setLastSavedContent(note.content)
+        setContent(markdownToHtml(note.content || ''))
+        setLastSavedContent(note.content || '')
       }
     } catch (_err) {
       setCurrentNote(note)
-      setContent(markdownToHtml(note.content))
-      setLastSavedContent(note.content)
+      setContent(markdownToHtml(note.content || ''))
+      setLastSavedContent(note.content || '')
     }
   }
 
@@ -182,9 +182,23 @@ function EditorContent() {
       const res = await editorApi.listNotes()
       if (res.success && res.data && res.data.length) {
         const first = res.data[0]
-        setCurrentNote(first)
-        setContent(markdownToHtml(first.content))
-        setLastSavedContent(first.content)
+        
+        try {
+          const noteRes = await editorApi.loadNote(first.id)
+          if (noteRes.success && noteRes.data) {
+            setCurrentNote(noteRes.data)
+            setContent(markdownToHtml(noteRes.data.content || ''))
+            setLastSavedContent(noteRes.data.content || '')
+          } else {
+            setCurrentNote(first)
+            setContent(markdownToHtml(first.content || ''))
+            setLastSavedContent(first.content || '')
+          }
+        } catch (err) {
+          setCurrentNote(first)
+          setContent(markdownToHtml(first.content || ''))
+          setLastSavedContent(first.content || '')
+        }
       } else {
         await createNewNote()
       }
@@ -222,7 +236,7 @@ function EditorContent() {
         onCreateNote={createNewNote}
         onDeleteNote={handleDeleteNote}
       />
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex flex-col flex-1">
         <NoteEditorHeader
           createdAt={createdAt}
           isBuilding={isBuilding}
@@ -233,14 +247,15 @@ function EditorContent() {
         <Editor value={content} onChange={setContent} onBuild={handleBuild} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
-      <AgentChat 
-        isOpen={isChatOpen} 
-        onToggle={toggleChat} 
-        currentNote={currentNote ? {
-          ...currentNote,
-          content: getMarkdownContent()
-        } : undefined}
-      />
+      {isChatOpen && (
+        <AgentChat 
+          onToggle={toggleChat} 
+          currentNote={currentNote ? {
+            ...currentNote,
+            content: getMarkdownContent()
+          } : undefined}
+        />
+      )}
     </div>
   )
 }

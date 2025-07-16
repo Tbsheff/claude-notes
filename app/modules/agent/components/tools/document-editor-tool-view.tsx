@@ -7,175 +7,136 @@ import { toolRegistry } from '@/lib/agent/tool-registry'
 export function DocumentEditorChatBlock({ block }: { block: ToolBlock }) {
   const { args, result } = block.data
   const isExecuting = block.status === 'executing'
-  const [streamingText, setStreamingText] = useState('')
-  const savedArgsRef = useRef<any>(null)
+  const [displayText, setDisplayText] = useState('')
+  const [displayAction, setDisplayAction] = useState('')
+  const [cursorPosition, setCursorPosition] = useState(0)
   
+  // Handle args updates (AI SDK 4.0 progressively builds the args)
   useEffect(() => {
-    if (!savedArgsRef.current && args && args.action && args.text) {
-      savedArgsRef.current = args
+    if (args) {
+      if (typeof args === 'string') {
+        // Still accumulating JSON, try to extract partial info
+        const textMatch = args.match(/"text":\s*"([^"]*(?:\\.[^"]*)*)"/)
+        const actionMatch = args.match(/"action":\s*"([^"]*)"/)
+        
+        if (textMatch) {
+          const text = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"')
+          setDisplayText(text)
+        }
+        if (actionMatch) {
+          setDisplayAction(actionMatch[1])
+        }
+      } else if (typeof args === 'object') {
+        // Complete parsed object
+        setDisplayText(args.text || '')
+        setDisplayAction(args.action || '')
+      }
     }
   }, [args])
 
+  // Handle final result
   useEffect(() => {
-    if (!savedArgsRef.current && block.data?.args?.action && block.data?.args?.text) {
-      savedArgsRef.current = block.data.args
+    if (result?.args) {
+      const finalArgs = typeof result.args === 'string' ? JSON.parse(result.args) : result.args
+      setDisplayText(finalArgs.text || '')
+      setDisplayAction(finalArgs.action || '')
     }
-  }, [block.data?.args])
-  
+  }, [result])
+
+  // Typing animation for streaming
   useEffect(() => {
-    if (isExecuting && args?.text) {
+    if (isExecuting && displayText) {
+      const text = displayText
       let index = 0
-      const text = args.text
+      setCursorPosition(0)
       
       const interval = setInterval(() => {
         if (index < text.length) {
-          setStreamingText(text.slice(0, index + 1))
+          setCursorPosition(index + 1)
           index++
         } else {
           clearInterval(interval)
         }
-      }, 50)
+      }, 20)
       
       return () => clearInterval(interval)
     }
-  }, [isExecuting, args?.text])
-  
+  }, [displayText, isExecuting])
+
+  const getActionIcon = () => {
+    switch (displayAction) {
+      case 'replace': return <Replace className="h-4 w-4" />
+      case 'append': return <Plus className="h-4 w-4" />
+      case 'prepend': return <Plus className="h-4 w-4" />
+      case 'delete': return <Minus className="h-4 w-4" />
+      default: return <Edit className="h-4 w-4" />
+    }
+  }
+
+  const getActionText = () => {
+    switch (displayAction) {
+      case 'replace': return 'replacing'
+      case 'append': return 'appending'
+      case 'prepend': return 'prepending'
+      case 'delete': return 'deleting'
+      default: return 'editing'
+    }
+  }
+
   const getTitle = () => {
     if (isExecuting) {
-      const action = args?.action || 'editing'
-      const actionMessages: Record<string, string> = {
-        'append': 'Writing',
-        'replace': 'Updating',
-        'insert': 'Inserting'
-      }
-      return `Document Editor (${actionMessages[action] || action}...)`
+      return `Document Editor (${getActionText()}...)`
     }
     return 'Document Editor'
   }
 
-  const getIcon = () => {
+  const getStatusText = () => {
     if (isExecuting) {
-      return <Loader2 className="h-3 w-3 animate-spin" />
+      return `Action: ${getActionText()}`
     }
-    
-    const action = args?.action || result?.action || savedArgsRef.current?.action
-    switch (action) {
-      case 'append':
-        return <Plus className="h-3 w-3" />
-      case 'replace':
-        return <Replace className="h-3 w-3" />
-      case 'insert':
-        return <Edit className="h-3 w-3" />
-      default:
-        return <FileText className="h-3 w-3" />
-    }
+    return `Action: ${displayAction || 'completed'}`
   }
 
-  const renderDiffLog = () => {
-    console.log('🔍 renderDiffLog - args:', args)
-    console.log('🔍 renderDiffLog - result:', result)
-    console.log('🔍 renderDiffLog - savedArgsRef:', savedArgsRef.current)
-    console.log('🔍 renderDiffLog - block.data:', block.data)
-    console.log('🔍 renderDiffLog - isExecuting:', isExecuting)
-    
-    if (isExecuting) {
-      return (
-        <div className="space-y-1 text-sm">
-          <div className="text-muted-foreground font-medium">
-            Action: {args?.action || 'editing'}
+  const previewText = isExecuting ? displayText.slice(0, cursorPosition) : displayText
+
+  return (
+    <div className="w-full max-w-lg md:max-w-2xl">
+      <CollapsibleTool 
+        title={getTitle()}
+        icon={isExecuting ? <Loader2 className="h-4 w-4 animate-spin" /> : getActionIcon()}
+        dataTestId={isExecuting ? 'document-editor-executing' : 'document-editor-completed'}
+      >
+        <div className="space-y-3 text-sm">
+          <div className="text-muted-foreground">
+            {getStatusText()}
           </div>
-          {streamingText && (
-            <div className="border rounded-md p-3 bg-muted/50">
-              <div className="text-xs text-muted-foreground mb-1">Preview:</div>
-              <div className="font-mono text-sm whitespace-pre-wrap">
-                {streamingText}
-                <span className="animate-pulse">|</span>
+          
+          {displayText && (
+            <div className="border rounded-lg p-3 bg-muted/20">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <FileText className="h-3 w-3" />
+                Content Preview
               </div>
+              <div className="text-sm whitespace-pre-wrap font-mono">
+                {previewText}
+                {isExecuting && <span className="animate-pulse">|</span>}
+              </div>
+              {isExecuting && displayText.length > cursorPosition && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {displayText.length - cursorPosition} more characters...
+                </div>
+              )}
+            </div>
+          )}
+          
+          {result && (
+            <div className="text-xs text-muted-foreground">
+              ✓ {displayText.length} characters processed
             </div>
           )}
         </div>
-      )
-    }
-
-    const logs = []
-    
-    const finalAction = args?.action || result?.action || savedArgsRef.current?.action
-    const finalText = args?.text || savedArgsRef.current?.text
-    
-    const action = finalAction
-    const text   = finalText
-    
-    console.log('🔍 Final action:', action)
-    console.log('🔍 Final text:', text)
-    
-    if (action) {
-      switch (action) {
-        case 'append':
-          if (text) {
-            logs.push(`+ Added: "${text}"`)
-          }
-          break
-        case 'replace':
-          logs.push(`- Replaced all content`)
-          if (text) {
-            logs.push(`+ New content: "${text}"`)
-          }
-          break
-        case 'insert':
-          if (text) {
-            logs.push(`+ Inserted: "${text}"${args?.position ? ` at position ${args.position}` : ''}`)
-          }
-          break
-        default:
-          logs.push(`~ Action: ${action}`)
-          if (text) {
-            logs.push(`  Content: "${text}"`)
-          }
-      }
-    } else {
-      logs.push(`~ No action specified`)
-    }
-    
-    if (result?.textLength) {
-      logs.push(`✓ ${result.textLength} characters processed`)
-    } else if (result?.message) {
-      logs.push(`✓ ${result.message}`)
-    }
-
-    if (logs.length === 0) {
-      logs.push('✓ Operation completed')
-    }
-
-    console.log('🔍 Final logs:', logs)
-
-    return (
-      <div className="space-y-1 text-sm">
-        {logs.map((line, idx) => (
-          <div key={idx} className="flex gap-1 text-xs font-mono break-all">
-            <span className={
-              line.startsWith('+') ? 'text-green-600' : 
-              line.startsWith('-') ? 'text-red-600' : 
-              line.startsWith('✓') ? 'text-green-600' : 
-              line.startsWith('~') ? 'text-yellow-600' :
-              'text-muted-foreground'
-            }>
-              {line.slice(0, 2)}
-            </span>
-            <span className="flex-1">{line.slice(2)}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  
-  return (
-    <CollapsibleTool
-      title={getTitle()}
-      icon={getIcon()}
-      dataTestId={isExecuting ? 'document-editor-executing' : 'document-editor-completed'}
-    >
-      {renderDiffLog()}
-    </CollapsibleTool>
+      </CollapsibleTool>
+    </div>
   )
 }
 

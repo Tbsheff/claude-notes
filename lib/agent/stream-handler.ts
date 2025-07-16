@@ -124,20 +124,21 @@ export class StreamHandler extends EventEmitter {
 
     if (blockIndex !== -1) {
       const toolBlock = this.currentMessage.blocks[blockIndex] as ToolBlock
-      const updatedBlock: ToolBlock = {
-        ...toolBlock,
-        data: {
-          ...toolBlock.data,
-          args: (toolBlock.data.args || '') + argsTextDelta
-        }
+      
+      // Accumulate the raw JSON text
+      const currentArgs = (toolBlock.data.args || '') + argsTextDelta
+      toolBlock.data.args = currentArgs
+      
+      // Try to parse the accumulated JSON to see if we have a complete object
+      try {
+        const parsedArgs = JSON.parse(currentArgs)
+        toolBlock.data.args = parsedArgs
+      } catch (e) {
+        // Still accumulating, keep the raw string
       }
-
-      this.currentMessage = this.parser.updateMessageWithBlock(
-        this.currentMessage,
-        updatedBlock
-      )
-
-      this.emitMessageUpdate()
+      
+      // Emit the updated message
+      this.emit('message-updated', this.currentMessage)
     }
   }
 

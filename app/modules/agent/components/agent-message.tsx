@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useCallback } from 'react'
-import { SparklesIcon } from 'lucide-react'
+import { SparklesIcon, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
@@ -35,21 +35,53 @@ const renderToolBlock = (block: ToolBlock) => {
     return <ToolComponent block={block} />
   }
   
+  const getTitle = () => {
+    if (isExecuting) {
+      return `Running ${toolName}...`
+    }
+    return toolName
+  }
+
+  const getIcon = () => {
+    if (isExecuting) {
+      return <Loader2 className="h-4 w-4 animate-spin" />
+    }
+    return <SparklesIcon size={16} />
+  }
+  
   return (
     <div className="w-full max-w-lg md:max-w-2xl">
       <CollapsibleTool 
-        title={isExecuting ? `Running ${toolName}` : toolName}
-        icon={<SparklesIcon size={16} />}
+        title={getTitle()}
+        icon={getIcon()}
         dataTestId={isExecuting ? `${toolName}-executing` : `${toolName}-completed`}
       >
-        <div className="space-y-2">
-          {isExecuting && (
-            <div className="text-sm text-muted-foreground">
-              Executing tool...
+        <div className="space-y-1 text-sm">
+          {args && (
+            <div className="text-muted-foreground font-medium">
+              Args: {JSON.stringify(args, null, 2)}
+            </div>
+          )}
+          {logs && logs.length > 0 && (
+            <div className="space-y-1 text-sm">
+              {logs.map((line: string, idx: number) => (
+                <div key={idx} className="flex gap-1 text-xs font-mono break-all">
+                  <span className={
+                    line.startsWith('+') ? 'text-green-600' : 
+                    line.startsWith('-') ? 'text-red-600' : 
+                    line.startsWith('✓') ? 'text-green-600' : 
+                    line.startsWith('~') ? 'text-yellow-600' :
+                    'text-muted-foreground'
+                  }>
+                    {line.slice(0, 2)}
+                  </span>
+                  <span className="flex-1">{line.slice(2)}</span>
+                </div>
+              ))}
             </div>
           )}
           {isCompleted && result && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-xs">
               {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
             </div>
           )}
