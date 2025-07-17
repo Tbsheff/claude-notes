@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
-import { AgentMessage } from './agent-message'
-import { DocumentPreview } from './document-card'
+import { AgentMessage, ThinkingMessage } from './agent-message'
+import { DocumentCard } from './document-card'
 import { UnifiedMessage } from '@/lib/agent/types'
 import { processStreamParts, handleClaudeCodeEvent } from '@/lib/agent/part-processor'
 import { cn } from '@/lib/utils'
@@ -163,23 +163,13 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
                 </>
               )}
               {isLoading && !streamingMessage && (
-                <div className="flex gap-3 justify-start">
-                  <div className="flex gap-2 max-w-[85%]">
-                    <div className="bg-muted rounded-lg px-3 py-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <ThinkingMessage />
               )}
             </div>
           </div>
           
           <div className="p-4 space-y-3">
-            <DocumentPreview currentNote={currentNote} />
+            <DocumentCard currentNote={currentNote} />
             
             <ChatInput
               value={inputValue}

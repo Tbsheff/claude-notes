@@ -38,7 +38,6 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: 
 
   useEffect(() => {
     if (result?.success) {
-      // Now this only sets the action, not the applied state
       setDisplayAction(result.action || '')
     }
   }, [result])

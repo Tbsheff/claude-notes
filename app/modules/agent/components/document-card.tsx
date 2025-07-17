@@ -1,6 +1,6 @@
 import { FileText } from 'lucide-react'
 
-interface DocumentPreviewProps {
+interface DocumnetCardProps {
   currentNote?: {
     id: string
     title: string
@@ -10,7 +10,7 @@ interface DocumentPreviewProps {
   }
 }
 
-export function DocumentPreview({ currentNote }: DocumentPreviewProps) {
+export function DocumentCard({ currentNote }: DocumnetCardProps) {
   if (!currentNote) return null
   
   return (
