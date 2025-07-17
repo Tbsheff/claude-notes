@@ -121,7 +121,6 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
   const handleSendMessage = () => {
     if (!inputValue.trim() || isLoading) return
 
-    // Create user message instantly for optimistic UI
     const userMessage: UnifiedMessage = {
       id: uuidv4(),
       content: inputValue,
@@ -142,14 +141,12 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
     setInputValue('')
     setIsLoading(true)
 
-    // Defer heavy operations
     ;(async () => {
       let chatId = currentChatId
       if (!chatId) {
         const newChatId = uuidv4()
         const now = Date.now()
 
-        // Create chat with provisional title
         await window.electronAPI.chats.create({
           id: newChatId,
           title: 'New Chat',
@@ -158,11 +155,10 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
         })
 
         chatId = newChatId
-        setCurrentChatId(newChatId)
 
-        // Generate title in background and update chat when ready
         ;(async () => {
           const titleResult = await window.electronAPI.ai.generateTitle(inputValue)
+
           if (titleResult.success && titleResult.title) {
             const updateFn = (window.electronAPI.chats as any).updateTitle
             if (typeof updateFn === 'function') {
@@ -172,10 +168,8 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
         })()
       }
 
-      // Persist user message
       await window.electronAPI.chats.addMessage(chatId, userMessage)
 
-      // Create assistant placeholder
       const assistantMessageId = uuidv4()
       const assistantMessage: UnifiedMessage = {
         id: assistantMessageId,
@@ -188,6 +182,10 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       setMessages(prev => [...prev, assistantMessage])
       await window.electronAPI.chats.addMessage(chatId, assistantMessage)
       console.log('📝 Assistant message placeholder created in DB:', assistantMessageId)
+
+      if (chatId !== currentChatId) {
+        setCurrentChatId(chatId)
+      }
 
       streamPartsRef.current[assistantMessageId] = []
 
