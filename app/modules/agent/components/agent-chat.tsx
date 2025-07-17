@@ -137,6 +137,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       toolInvocations: []
     }
 
+    const currentMessagesSnapshot = [...messages, userMessage]
     setMessages(prev => [...prev, userMessage])
     setInputValue('')
     setIsLoading(true)
@@ -188,8 +189,6 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       }
 
       streamPartsRef.current[assistantMessageId] = []
-
-      const currentMessagesSnapshot = [...messages, userMessage]
 
       if (currentNote && currentNote.content && currentNote.content.trim()) {
         const systemMessage: UnifiedMessage = {

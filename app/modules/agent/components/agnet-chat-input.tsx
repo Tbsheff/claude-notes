@@ -38,7 +38,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="w-full bg-background rounded-xl border-border p-1 border">
+    <div className="w-full rounded-xl border-border p-1 border bg-card">
       <div className="flex items-center gap-2">
         <div className="flex-1">
           <Textarea
@@ -48,7 +48,7 @@ export function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled || loading}
-            className="w-full min-h-[20px] max-h-[100px] resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none bg-transparent text-sm py-1 px-2 placeholder:text-muted-foreground leading-tight"
+            className="w-full min-h-[20px] max-h-[100px] resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none !bg-card text-sm py-1 px-2 placeholder:text-muted-foreground leading-tight"
             rows={1}
           />
         </div>
@@ -57,13 +57,14 @@ export function ChatInput({
           <Button
             onClick={handleSubmit}
             disabled={!value.trim() || loading}
+            variant="secondary"
             className="h-8 w-8 p-0"
             size="sm"
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <ArrowUpIcon className={value.trim() ? "h-4 w-4 text-white" : "h-4 w-4 text-muted-foreground"} />
+              <ArrowUpIcon className="h-4 w-4" />
             )}
           </Button>
         </div>
