@@ -7,7 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ai: {
     initialize: (config) => ipcRenderer.invoke('ai:initialize', config),
     processRequest: (message) => ipcRenderer.invoke('ai:process-request', message),
-    agentStream: (payload) => ipcRenderer.invoke('ai:agent-stream', payload)
+    agentStream: (payload) => ipcRenderer.invoke('ai:agent-stream', payload),
+    generateTitle: (userMessage) => ipcRenderer.invoke('ai:generate-title', userMessage)
   },
   llmCall: (messages, model) => ipcRenderer.invoke('llm:call', messages, model),
   notes: {
@@ -20,6 +21,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   settings: {
     save: (settings) => ipcRenderer.invoke('settings:save', settings),
     load: () => ipcRenderer.invoke('settings:load')
+  },
+  chats: {
+    create: (chat) => ipcRenderer.invoke('chats:create', chat),
+    addMessage: (chatId, message) => ipcRenderer.invoke('chats:addMessage', chatId, message),
+    getMessages: (chatId) => ipcRenderer.invoke('chats:getMessages', chatId),
+    get: (chatId) => ipcRenderer.invoke('chats:get', chatId),
+    list: () => ipcRenderer.invoke('chats:list'),
+    updateMessage: (message) => ipcRenderer.invoke('chats:updateMessage', message),
+    delete: (chatId) => ipcRenderer.invoke('chats:delete', chatId)
   },
   app: {
     reloadWindow: () => ipcRenderer.invoke('app:reloadWindow'),

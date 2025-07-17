@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-const { app } = require('electron')
+import { db } from '../../lib/db'
+import { notesIndex } from '../../lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
 import type { Note, NoteMetadata } from '../../app/modules/editor/api/types'
 
 export function getNotesDir(): string {
@@ -8,20 +10,6 @@ export function getNotesDir(): string {
   const notesDir = path.join(projectRoot, 'data', 'notes')
   if (!fs.existsSync(notesDir)) fs.mkdirSync(notesDir, { recursive: true })
   return notesDir
-}
-
-export function getSettingsPath(): string {
-  const projectRoot = path.resolve(__dirname, '../../../')
-  const dir = path.join(projectRoot, 'data')
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  return path.join(dir, 'settings.json')
-}
-
-export function getIndexPath(): string {
-  const projectRoot = path.resolve(__dirname, '../../../')
-  const dir = path.join(projectRoot, 'data')
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  return path.join(dir, 'index.json')
 }
 
 export function generateNoteId(): string {
@@ -54,18 +42,33 @@ export function createMarkdown(note: Note): string {
   return front + note.content
 }
 
-export function loadIndex(): { notes: NoteMetadata[] } {
-  const idxPath = getIndexPath()
-  if (!fs.existsSync(idxPath)) return { notes: [] }
-  try {
-    return JSON.parse(fs.readFileSync(idxPath, 'utf-8'))
-  } catch {
-    return { notes: [] }
-  }
+function dbListNotes(): NoteMetadata[] {
+  const rows = db.select().from(notesIndex).orderBy(desc(notesIndex.updatedAt)).all()
+  return rows.map((r: any) => ({
+    id: r.id,
+    title: r.title ?? 'Untitled Note',
+    createdAt: new Date(r.createdAt).toISOString(),
+    updatedAt: new Date(r.updatedAt).toISOString()
+  }))
 }
 
-export function saveIndex(index: { notes: NoteMetadata[] }) {
-  fs.writeFileSync(getIndexPath(), JSON.stringify(index, null, 2))
+function upsertNoteMetadata(meta: NoteMetadata, filePath: string) {
+  const exists = db.select().from(notesIndex).where(eq(notesIndex.id, meta.id)).get()
+  if (exists) {
+    db.update(notesIndex).set({
+      title: meta.title,
+      filePath,
+      updatedAt: Date.parse(meta.updatedAt)
+    }).where(eq(notesIndex.id, meta.id)).run()
+  } else {
+    db.insert(notesIndex).values({
+      id: meta.id,
+      title: meta.title,
+      filePath,
+      createdAt: Date.parse(meta.createdAt),
+      updatedAt: Date.parse(meta.updatedAt)
+    }).run()
+  }
 }
 
 export function createNoteFromMarkdown(noteId: string, md: string): Note {
@@ -101,13 +104,10 @@ export async function createNote(title = 'Untitled Note', content = '') {
       updatedAt: now,
     }
 
-    const path = getNotePath(id)
-    fs.writeFileSync(path, createMarkdown(note))
+    const filePath = getNotePath(id)
+    fs.writeFileSync(filePath, createMarkdown(note))
 
-    const index = loadIndex()
-    index.notes.push(getNoteMetadata(note))
-    index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    saveIndex(index)
+    upsertNoteMetadata(getNoteMetadata(note), filePath)
 
     return { success: true, note }
   } catch (e) {
@@ -130,12 +130,7 @@ export async function saveNote(noteId: string, content: string, title?: string) 
 
     fs.writeFileSync(notePath, createMarkdown(updated))
 
-    const index = loadIndex()
-    const idx = index.notes.findIndex((n) => n.id === noteId)
-    if (idx !== -1) index.notes[idx] = getNoteMetadata(updated)
-    else index.notes.push(getNoteMetadata(updated))
-    index.notes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    saveIndex(index)
+    upsertNoteMetadata(getNoteMetadata(updated), notePath)
 
     return { success: true, note: updated }
   } catch (e) {
@@ -156,8 +151,8 @@ export async function loadNote(noteId: string) {
 
 export async function listNotes() {
   try {
-    const index = loadIndex()
-    return { success: true, notes: index.notes }
+    const notes = dbListNotes()
+    return { success: true, notes }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -166,11 +161,10 @@ export async function listNotes() {
 export async function deleteNote(noteId: string) {
   try {
     const notePath = getNotePath(noteId)
-    if (!fs.existsSync(notePath)) return { success: false, error: 'Note not found' }
-    fs.unlinkSync(notePath)
-    const index = loadIndex()
-    index.notes = index.notes.filter((n) => n.id !== noteId)
-    saveIndex(index)
+    if (fs.existsSync(notePath)) {
+      fs.unlinkSync(notePath)
+    }
+    db.delete(notesIndex).where(eq(notesIndex.id, noteId)).run()
     return { success: true }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) }

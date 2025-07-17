@@ -17,6 +17,7 @@ export function createWindow() {
   });
 
   const { setMainWindow } = require('./ipc/ai-handlers')
+  require('./ipc/chat-handlers')
   setMainWindow(mainWindow)
   
   const { setMainWindow: setDocumentMainWindow } = require('./services/document-service')

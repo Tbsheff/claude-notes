@@ -5,15 +5,18 @@ import { ChatInput } from './agnet-chat-input'
 import { AgentMessage, ThinkingMessage } from './agent-message'
 import { DocumentCard } from './document-card'
 import { UnifiedMessage } from '@/lib/agent/types'
-import { processStreamParts, handleClaudeCodeEvent } from '@/lib/agent/part-processor'
+import { processStreamParts } from '@/lib/agent/part-processor'
+import { addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/agent/part-processor'
 import { cn } from '@/lib/utils'
+import { ChatSwitcher } from './chat-switcher'
+import { v4 as uuidv4 } from 'uuid'
 
 export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any) {
   const [messages, setMessages] = useState<UnifiedMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [streamingMessage, setStreamingMessage] = useState<UnifiedMessage | null>(null)
-  
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+
   const streamPartsRef = useRef<Record<string, any[]>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -21,37 +24,74 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages, streamingMessage]);
+  }, [messages]);
+
+  useEffect(() => {
+    if (currentChatId) {
+      loadChatMessages(currentChatId)
+    } else {
+      setMessages([])
+    }
+  }, [currentChatId])
 
   useEffect(() => {
     if (!window.electronAPI) return
 
     const handleStreamPart = (_event: any, data: { streamId: string; part: any }) => {
       const { streamId, part } = data
-      
       const currentParts = streamPartsRef.current[streamId] || []
       const newParts = [...currentParts, part]
       streamPartsRef.current[streamId] = newParts
-      
-      const msg = processStreamParts(streamId, newParts)
-      setStreamingMessage(msg)
+
+      setMessages(prev => 
+        prev.map(m => 
+          m.id === streamId ? processStreamParts(streamId, newParts, m) : m
+        )
+      )
     }
 
     const handleStreamComplete = (_event: any, data: { streamId: string }) => {
+      const { streamId } = data
       const finalParts = streamPartsRef.current[data.streamId] || []
       if (finalParts.length > 0) {
-        const finalMessage = processStreamParts(data.streamId, finalParts)
+        const finalMessage = processStreamParts(streamId, finalParts)
         finalMessage.metadata.isStreaming = false
-        setMessages(prev => [...prev, finalMessage])
+        setMessages(prev => prev.map(m => m.id === streamId ? finalMessage : m))
+        window.electronAPI.chats.updateMessage(finalMessage)
+        console.log('📝 Assistant message updated in DB:', finalMessage.id)
       }
-      
-      setStreamingMessage(null)
       delete streamPartsRef.current[data.streamId]
       setIsLoading(false)
     }
 
     const handleClaudeCodeEventLocal = (_event: any, event: any) => {
-      handleClaudeCodeEvent(event, streamingMessage, streamPartsRef, setStreamingMessage)
+      if (!event || !event.toolCallId) return
+      const { toolCallId } = event
+      addClaudeCodeLog(toolCallId, event)
+
+      setMessages(prev => prev.map(msg => {
+        let updated = false
+        const newBlocks = msg.blocks.map(block => {
+          if (block.type === 'tool' && block.id === toolCallId) {
+            updated = true
+            return {
+              ...block,
+              data: {
+                ...block.data,
+                logs: [...getClaudeCodeLogs(toolCallId)],
+                currentStatus: getClaudeCodeStatus(toolCallId)
+              }
+            }
+          }
+          return block
+        })
+        if (updated) {
+          const newMsg = { ...msg, blocks: newBlocks }
+          window.electronAPI.chats.updateMessage(newMsg)
+          return newMsg
+        }
+        return msg
+      }))
     }
 
     window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
@@ -65,15 +105,29 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
     }
   }, [])
 
-  const handleSendMessage = async () => {
+  const handleUpdateMessage = (message: UnifiedMessage) => {
+    setMessages(prev => prev.map(m => m.id === message.id ? message : m))
+    window.electronAPI.chats.updateMessage(message)
+    console.log('📝 Message updated after tool interaction:', message.id)
+  }
+
+  const loadChatMessages = async (chatId: string) => {
+    const result = await window.electronAPI.chats.getMessages(chatId)
+    if (result.success && result.messages) {
+      setMessages(result.messages)
+    }
+  }
+
+  const handleSendMessage = () => {
     if (!inputValue.trim() || isLoading) return
 
+    // Create user message instantly for optimistic UI
     const userMessage: UnifiedMessage = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       content: inputValue,
       role: 'user',
       blocks: [{
-        id: 'user-text',
+        id: uuidv4(),
         type: 'text',
         status: 'completed',
         data: { text: inputValue }
@@ -88,30 +142,99 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
     setInputValue('')
     setIsLoading(true)
 
-    const allMessages = [...messages, userMessage]
-    
-    if (currentNote && currentNote.content && currentNote.content.trim()) {
-      const systemMessage: UnifiedMessage = {
-        id: 'system-document',
-        content: `Current document content:\n\n${currentNote.content}`,
+    // Defer heavy operations
+    ;(async () => {
+      let chatId = currentChatId
+      if (!chatId) {
+        const newChatId = uuidv4()
+        const now = Date.now()
+
+        // Create chat with provisional title
+        await window.electronAPI.chats.create({
+          id: newChatId,
+          title: 'New Chat',
+          createdAt: now,
+          updatedAt: now
+        })
+
+        chatId = newChatId
+        setCurrentChatId(newChatId)
+
+        // Generate title in background and update chat when ready
+        ;(async () => {
+          const titleResult = await window.electronAPI.ai.generateTitle(inputValue)
+          if (titleResult.success && titleResult.title) {
+            const updateFn = (window.electronAPI.chats as any).updateTitle
+            if (typeof updateFn === 'function') {
+              await updateFn(newChatId, titleResult.title)
+            }
+          }
+        })()
+      }
+
+      // Persist user message
+      await window.electronAPI.chats.addMessage(chatId, userMessage)
+
+      // Create assistant placeholder
+      const assistantMessageId = uuidv4()
+      const assistantMessage: UnifiedMessage = {
+        id: assistantMessageId,
         role: 'assistant',
+        content: '',
         blocks: [],
-        metadata: { timestamp: new Date() },
+        metadata: { timestamp: new Date(), isStreaming: true, streamId: assistantMessageId },
         toolInvocations: []
       }
-      allMessages.unshift(systemMessage)
-    }
-    
-    const payload = {
-      messages: allMessages,
-      noteId: currentNote?.id,
-      noteContent: currentNote?.content
-    }
-    const response = await (window.electronAPI.ai.agentStream as any)(payload)
-    
-    if (!response.success) {
-      console.log('❌ handleSendMessage: Response failed')
-      setIsLoading(false)
+      setMessages(prev => [...prev, assistantMessage])
+      await window.electronAPI.chats.addMessage(chatId, assistantMessage)
+      console.log('📝 Assistant message placeholder created in DB:', assistantMessageId)
+
+      streamPartsRef.current[assistantMessageId] = []
+
+      const currentMessagesSnapshot = [...messages, userMessage]
+
+      if (currentNote && currentNote.content && currentNote.content.trim()) {
+        const systemMessage: UnifiedMessage = {
+          id: 'system-document',
+          content: `Current document content:\n\n${currentNote.content}`,
+          role: 'assistant',
+          blocks: [],
+          metadata: { timestamp: new Date() },
+          toolInvocations: []
+        }
+        currentMessagesSnapshot.unshift(systemMessage)
+      }
+
+      const payload = {
+        messages: currentMessagesSnapshot,
+        noteId: currentNote?.id,
+        noteContent: currentNote?.content,
+        streamId: assistantMessageId,
+      }
+      const response = await (window.electronAPI.ai.agentStream as any)(payload)
+
+      if (!response.success) {
+        console.log('❌ handleSendMessage: Response failed')
+        setIsLoading(false)
+        setMessages(prev => prev.filter(m => m.id !== assistantMessageId))
+      }
+    })()
+  }
+
+  const handleSelectChat = (chatId: string) => {
+    setCurrentChatId(chatId)
+  }
+
+  const handleCreateChat = () => {
+    setCurrentChatId(null)
+    setMessages([])
+  }
+
+  const handleDeleteChat = async (chatId: string) => {
+    await window.electronAPI.chats.delete(chatId)
+    if (currentChatId === chatId) {
+      setCurrentChatId(null)
+      setMessages([])
     }
   }
 
@@ -121,10 +244,13 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       isOpen ? "w-[480px]" : "w-0 overflow-hidden"
     )}>
       <div className="h-full flex flex-col w-full">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground">AI Agent</h3>
-          </div>
+        <div className="flex items-center justify-between p-2 border-b border-border">
+          <ChatSwitcher
+            currentChatId={currentChatId}
+            onSelectChat={handleSelectChat}
+            onCreateChat={handleCreateChat}
+            onDeleteChat={handleDeleteChat}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -134,43 +260,32 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
             <X className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto">
             <div className="space-y-4">
-              {messages.length === 0 && !streamingMessage ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <div className="text-sm opacity-50">No messages yet</div>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message) => (
-                    <AgentMessage
-                      key={message.id}
-                      message={message}
-                      currentNote={currentNote}
-                      onApplyChanges={onApplyChanges}
-                    />
-                  ))}
-                  {streamingMessage && (
-                    <AgentMessage 
-                      key={streamingMessage.id} 
-                      message={streamingMessage} 
-                      currentNote={currentNote}
-                      onApplyChanges={onApplyChanges}
-                    />
-                  )}
-                </>
-              )}
-              {isLoading && !streamingMessage && (
+              {messages.map((message) => (
+                <AgentMessage
+                  key={message.id}
+                  message={message}
+                  currentNote={currentNote}
+                  onApplyChanges={onApplyChanges}
+                  onUpdateMessage={handleUpdateMessage}
+                />
+              ))}
+              {isLoading && (() => {
+                const streaming = messages.find(m => m.metadata?.isStreaming)
+                if (!streaming) return true
+                return streaming.blocks.length === 0
+              })() && (
                 <ThinkingMessage />
               )}
             </div>
           </div>
-          
+
           <div className="p-4 space-y-3">
             <DocumentCard currentNote={currentNote} />
-            
+
             <ChatInput
               value={inputValue}
               onChange={setInputValue}

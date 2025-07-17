@@ -26,7 +26,7 @@ const renderTextBlock = (block: TextBlock, isUser: boolean) => {
   )
 }
 
-const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (newContent: string) => void) => {
+const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (newContent: string) => void, onUpdateBlock?: (updatedBlock: MessageBlock) => void) => {
   const { toolName, toolCallId, args, result, logs } = block.data
   const isExecuting = block.status === 'executing'
   const isCompleted = block.status === 'completed'
@@ -34,8 +34,8 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
   const ToolComponent = getToolComponent(toolName)
   if (ToolComponent) {
     return (
-      <div className="w-full max-w-xl md:max-w-3xl">
-        <ToolComponent block={block} currentNote={currentNote} onApplyChanges={onApplyChanges} />
+      <div className="w-full">
+        <ToolComponent block={block} currentNote={currentNote} onApplyChanges={onApplyChanges} onUpdateBlock={onUpdateBlock} />
       </div>
     )
   }
@@ -55,7 +55,7 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
   }
   
   return (
-    <div className="w-full max-w-lg md:max-w-2xl">
+    <div className="w-full">
       <CollapsibleTool 
         title={getTitle()}
         icon={getIcon()}
@@ -104,7 +104,7 @@ const renderThinkingBlock = (block: ThinkingBlock) => {
   )
 }
 
-const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, currentNote, onApplyChanges }) => {
+const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, currentNote, onApplyChanges, onUpdateMessage }) => {
   const isUser = message.role === 'user'
 
   const messageContent = useMemo(() => {
@@ -118,7 +118,15 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, current
       } else if (block.type === 'tool') {
         elements.push(
           <div key={key}>
-            {renderToolBlock(block as ToolBlock, currentNote, onApplyChanges)}
+            {renderToolBlock(block as ToolBlock, currentNote, onApplyChanges, (updatedBlock) => {
+              if (onUpdateMessage) {
+                const updatedMessage = {
+                  ...message,
+                  blocks: message.blocks.map(b => b.id === updatedBlock.id ? updatedBlock : b)
+                }
+                onUpdateMessage(updatedMessage)
+              }
+            })}
           </div>
         )
       } else if (block.type === 'thinking') {
@@ -127,7 +135,7 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, current
     })
  
     return elements
-  }, [message.blocks, message.id, isUser])
+  }, [message.blocks, message.id, isUser, onUpdateMessage])
 
   return (
     <motion.div

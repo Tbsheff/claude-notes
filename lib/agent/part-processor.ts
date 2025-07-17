@@ -47,8 +47,8 @@ export function processStreamParts(
   parts: any[],
   existingMessage?: UnifiedMessage
 ): UnifiedMessage {
-  let content = existingMessage?.content || ''
-  const blocks: MessageBlock[] = []
+  // Always rebuild the entire message from all parts to ensure consistency
+  let content = ''
   const toolCalls: Record<string, any> = {}
 
   for (const part of parts) {
@@ -86,18 +86,24 @@ export function processStreamParts(
     }
   }
 
-  // Convert aggregated tool calls to blocks for UI
+  const blocks: MessageBlock[] = []
+  
+  if (content.trim()) {
+      blocks.push({
+          id: `text-block-${streamId}`,
+          type: 'text',
+          status: 'completed',
+          data: { text: content.trim() }
+      })
+  }
+  
   for (const toolCall of Object.values(toolCalls)) {
     const statusMap: any = {
       'input-streaming': 'executing',
       'input-available': 'executing',
       'output-available': 'completed'
     }
-    
-    // Include Claude Code logs in tool block data (always get fresh logs)
     const claudeCodeLogs = getClaudeCodeLogs(toolCall.toolCallId)
-    console.log('🔥 [part-processor] Tool block for', toolCall.toolCallId, 'logs:', claudeCodeLogs)
-    
     blocks.push({
       id: toolCall.toolCallId,
       type: 'tool',
@@ -107,18 +113,9 @@ export function processStreamParts(
         toolCallId: toolCall.toolCallId,
         args: toolCall.input || toolCall.rawInput,
         result: toolCall.output,
-        logs: [...claudeCodeLogs] // Create new array to ensure fresh reference
+        logs: [...claudeCodeLogs]
       }
     })
-  }
-  
-  if (content.trim()) {
-      blocks.unshift({
-          id: `text-block-${streamId}`,
-          type: 'text',
-          status: 'completed',
-          data: { text: content.trim() }
-      })
   }
 
   return {

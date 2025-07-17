@@ -113,7 +113,7 @@ export const markdownToHtml = (markdown: string): string => {
     }
 
     paragraph.push(line.trim())
-  }
+    }
 
   flushParagraph()
   if (inBullet) htmlParts.push('</ul>')

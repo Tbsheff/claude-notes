@@ -53,6 +53,7 @@ export interface ChatMessageProps {
   message: UnifiedMessage;
   currentNote?: Note;
   onApplyChanges?: (newContent: string) => void;
+  onUpdateMessage?: (message: UnifiedMessage) => void;
 }
 
 export interface ToolComponentProps {

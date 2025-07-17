@@ -25,16 +25,17 @@ function renderDiff(oldContent: string, newContent: string) {
   })
 }
 
-export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: { 
+export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, onUpdateBlock }: { 
   block: ToolBlock, 
   currentNote?: Note,
-  onApplyChanges?: (newContent: string) => void 
+  onApplyChanges?: (newContent: string) => void,
+  onUpdateBlock?: (block: ToolBlock) => void
 }) {
   const { result } = block.data
   const isExecuting = block.status === 'executing'
   const [displayAction, setDisplayAction] = useState('')
-  const [isApplied, setIsApplied] = useState(false)
-  const [isDeclined, setIsDeclined] = useState(false)
+  const isApplied = result?.isApplied || false
+  const isDeclined = result?.isDeclined || false
 
   useEffect(() => {
     if (result?.success) {
@@ -45,12 +46,16 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges }: 
   const handleApply = () => {
     if (result?.success && result.newContent) {
       onApplyChanges?.(result.newContent)
-      setIsApplied(true)
+      if (onUpdateBlock) {
+        onUpdateBlock({ ...block, data: { ...block.data, result: { ...result, isApplied: true } } })
+      }
     }
   }
 
   const handleDecline = () => {
-    setIsDeclined(true)
+    if (onUpdateBlock) {
+      onUpdateBlock({ ...block, data: { ...block.data, result: { ...result, isDeclined: true } } })
+    }
   }
 
   const getActionIcon = () => {

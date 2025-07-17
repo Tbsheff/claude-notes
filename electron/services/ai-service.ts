@@ -1,8 +1,7 @@
 import path from 'path'
 import os from 'os'
 import { BrowserWindow } from 'electron'
-import { getSettingsPath } from './note-service'
-// Removed StreamHandler, will forward raw stream parts to renderer
+import { loadSettings } from './settings-service'
 
 let aiAgent: any = null
 let _claudeIsWorking = false
@@ -22,17 +21,8 @@ export function getMainWindow() {
 }
 
 async function getStoredApiKeys() {
-  try {
-    const fs = require('fs')
-    const settingsPath = getSettingsPath()
-    if (fs.existsSync(settingsPath)) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-      return { anthropicApiKey: settings.apiKeys?.anthropicApiKey || '' }
-    }
-  } catch (e) {
-    console.error('Failed to load stored API keys:', e)
-  }
-  return { anthropicApiKey: '' }
+  const { settings } = await loadSettings()
+  return { anthropicApiKey: settings?.apiKeys?.anthropicApiKey || '' }
 }
 
 export async function initializeAI(config: any = {}) {
@@ -94,10 +84,20 @@ export async function llmCall(messages: any, model: string) {
   }
 }
 
+export async function generateTitleForChat(userMessage: string) {
+  try {
+    const { generateChatTitle } = await import('../../lib/agent/title-generator')
+    const title = await generateChatTitle(userMessage)
+    return { success: true, title }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 let conversationHistory: any[] = []
 
-export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string }, rebuildCallback?: () => void) {
-  const { messages, noteId, noteContent } = payload
+export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string, streamId?: string }, rebuildCallback?: () => void) {
+  const { messages, noteId, noteContent, streamId } = payload
   try {
     const { createAgentStream: createStream } = await import('../../lib/agent')
     const mainWindow = getMainWindow()
@@ -130,11 +130,10 @@ export async function createAgentStream(payload: { messages: any[], noteId?: str
       mainWindow
     })
     
-    const streamId = `stream-${Date.now()}`
+    const finalStreamId = streamId || `stream-${Date.now()}`
+    processStreamChunks(streamResult, finalStreamId, rebuildCallback)
     
-    processStreamChunks(streamResult, streamId, rebuildCallback)
-    
-    return { success: true, streamId }
+    return { success: true, streamId: finalStreamId }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) }
   }

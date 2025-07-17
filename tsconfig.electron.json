@@ -17,7 +17,8 @@
   "include": [
     "electron.ts",
     "preload.ts",
-    "lib/"
+    "lib/",
+    "electron/"
   ],
   "exclude": [
     "node_modules",

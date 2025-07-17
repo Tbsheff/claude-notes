@@ -28,7 +28,7 @@ export const CollapsibleTool = ({
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <div className="flex gap-2 items-start w-full max-w-lg md:max-w-2xl">
+        <div className="flex gap-2 items-start w-full">
           <div 
             className={cn("flex flex-col w-full", className)}
             data-testid={dataTestId}

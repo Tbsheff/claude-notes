@@ -5,6 +5,7 @@ export interface ToolComponentProps {
   block: ToolBlock;
   currentNote?: Note;
   onApplyChanges?: (newContent: string) => void;
+  onUpdateBlock?: (block: ToolBlock) => void;
 }
 
 class ToolRegistry {

@@ -25,6 +25,8 @@ dist-ssr
 *.sw?
 
 package-lock.json
+pnpm-lock.yaml
+lib/db/migrations/
 
 # Agent workspace
 .agent-workspace/

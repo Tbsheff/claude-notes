@@ -223,6 +223,21 @@ export function SettingsDialog() {
               ))}
             </div>
           </div>
+
+          {/* Shortcuts Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium mb-2">Shortcuts</h3>
+            <ul className="space-y-2">
+              <li className="flex items-center justify-between px-2 py-1">
+                <span className="text-sm">Toggle Sidebar</span>
+                <kbd className="text-xs font-mono bg-muted/50 px-2 py-1 rounded">⌘ + /</kbd>
+              </li>
+              <li className="flex items-center justify-between px-2 py-1">
+                <span className="text-sm">Toggle AI Chat</span>
+                <kbd className="text-xs font-mono bg-muted/50 px-2 py-1 rounded">⌘ + K</kbd>
+              </li>
+            </ul>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

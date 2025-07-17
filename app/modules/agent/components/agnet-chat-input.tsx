@@ -38,8 +38,8 @@ export function ChatInput({
   }
 
   return (
-    <div className="w-full bg-white rounded-xl border border-gray-200">
-      <div className="flex items-center gap-2 p-2">
+    <div className="w-full bg-background rounded-xl border-border p-1 border">
+      <div className="flex items-center gap-2">
         <div className="flex-1">
           <Textarea
             ref={textareaRef}
@@ -57,13 +57,13 @@ export function ChatInput({
           <Button
             onClick={handleSubmit}
             disabled={!value.trim() || loading}
-            className="h-8 w-8 p-0 bg-black hover:bg-gray-800 disabled:bg-gray-200 rounded-md"
+            className="h-8 w-8 p-0"
             size="sm"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin text-white" />
             ) : (
-              <ArrowUpIcon className={value.trim() ? "h-4 w-4 text-white" : "h-4 w-4 text-gray-500"} />
+              <ArrowUpIcon className={value.trim() ? "h-4 w-4 text-white" : "h-4 w-4 text-muted-foreground"} />
             )}
           </Button>
         </div>

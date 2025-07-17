@@ -8,6 +8,7 @@ export interface ElectronAPI {
     initialize: (config?: { apiKey?: string }) => Promise<{ success: boolean, error?: string }>;
     processRequest: (message: string) => Promise<{ success: boolean, response?: string, error?: string, changedFiles?: string[], workspaceResult?: { changedFilesCount?: number } }>;
     agentStream: (messages: Array<{ role: 'user' | 'assistant', content: string }>) => Promise<{ success: boolean, streamId?: string, error?: string }>;
+    generateTitle: (userMessage: string) => Promise<{ success: boolean, title?: string, error?: string }>;
   };
   llmCall: (messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }>, model?: string) => Promise<{ success: boolean, content?: string, error?: string }>;
   notes: {
@@ -20,6 +21,15 @@ export interface ElectronAPI {
   settings: {
     save: (settings: AppSettings) => Promise<{ success: boolean, error?: string }>;
     load: () => Promise<{ success: boolean, settings?: AppSettings, error?: string }>;
+  };
+  chats: {
+    create: (chat: { id: string; title: string; createdAt: number; updatedAt: number }) => Promise<{ success: boolean; error?: string }>;
+    addMessage: (chatId: string, message: UnifiedMessage) => Promise<{ success: boolean; error?: string }>;
+    getMessages: (chatId: string) => Promise<{ success: boolean; messages?: UnifiedMessage[]; error?: string }>;
+    get: (chatId: string) => Promise<{ success: boolean; chat?: any; error?: string }>;
+    list: () => Promise<{ success: boolean; chats?: any[]; error?: string }>;
+    updateMessage: (message: UnifiedMessage) => Promise<{ success: boolean; error?: string }>;
+    delete: (chatId: string) => Promise<{ success: boolean; error?: string }>;
   };
   app: {
     reloadWindow: () => Promise<void>;
