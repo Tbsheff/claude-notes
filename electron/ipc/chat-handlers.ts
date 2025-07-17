@@ -62,4 +62,13 @@ ipcMain.handle('chats:delete', async (_e, chatId) => {
   } catch (error: any) {
     return { success: false, error: error?.message || String(error) }
   }
+})
+
+ipcMain.handle('chats:updateTitle', async (_e, chatId, title) => {
+  try {
+    await ChatService.updateChatTitle(chatId, title)
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error?.message || String(error) }
+  }
 }) 

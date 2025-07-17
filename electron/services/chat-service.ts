@@ -58,5 +58,16 @@ export const ChatService = {
       })
       .where(eq(messages.id, message.id))
       .run()
+  },
+
+  updateChatTitle: (chatId: string, title: string) => {
+    console.log('✅ Updating chat title in DB:', chatId, title)
+    db.update(chats)
+      .set({
+        title,
+        updatedAt: Date.now()
+      })
+      .where(eq(chats.id, chatId))
+      .run()
   }
 } 

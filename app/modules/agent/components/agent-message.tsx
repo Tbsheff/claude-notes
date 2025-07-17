@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
 import { CollapsibleTool } from './tools/collapsible-tool'
-import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock, Note } from '@/lib/agent/types'
+import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
+import { Note } from '@/app/modules/editor/api/types'
 import { getToolComponent } from '@/lib/agent/tool-registry'
 import './tools/claude-code-tool-view'
 import './tools/document-editor-tool-view'
@@ -26,7 +27,7 @@ const renderTextBlock = (block: TextBlock, isUser: boolean) => {
   )
 }
 
-const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (newContent: string) => void, onUpdateBlock?: (updatedBlock: MessageBlock) => void) => {
+const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void, onUpdateBlock?: (updatedBlock: MessageBlock) => void) => {
   const { toolName, toolCallId, args, result, logs } = block.data
   const isExecuting = block.status === 'executing'
   const isCompleted = block.status === 'completed'

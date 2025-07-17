@@ -1,7 +1,6 @@
 import { UnifiedMessage, MessageBlock } from './types'
 import { MutableRefObject, Dispatch, SetStateAction } from 'react'
 
-// Global store for Claude Code events by toolCallId
 const toolCallLogs: Record<string, any[]> = {}
 
 export function addClaudeCodeLog(toolCallId: string, event: any) {
@@ -47,7 +46,6 @@ export function processStreamParts(
   parts: any[],
   existingMessage?: UnifiedMessage
 ): UnifiedMessage {
-  // Always rebuild the entire message from all parts to ensure consistency
   let content = ''
   const toolCalls: Record<string, any> = {}
 

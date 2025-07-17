@@ -86,10 +86,20 @@ export async function llmCall(messages: any, model: string) {
 
 export async function generateTitleForChat(userMessage: string) {
   try {
-    const { generateChatTitle } = await import('../../lib/agent/title-generator')
-    const title = await generateChatTitle(userMessage)
-    return { success: true, title }
+    const stored = await getStoredApiKeys()
+    const messages = [
+      { role: 'user' as const, content: `Create a short, descriptive chat title (3-5 words) for this message: "${userMessage}"\n\nIMPORTANT: Return ONLY the title text without quotes, punctuation, or any formatting. Just plain text that summarize intent of the message.` }
+    ]
+    const { llmCall } = await import('../../lib/llm/core')
+    const result = await llmCall(messages, 'anthropic/claude-3-haiku-20240307', stored)
+    
+    if (result.success && result.content) {
+      return { success: true, title: result.content.trim() }
+    } else {
+      return { success: false, error: result.error || 'Failed to generate title' }
+    }
   } catch (e) {
+    console.error('Error generating chat title:', e)
     return { success: false, error: e instanceof Error ? e.message : String(e) }
   }
 }

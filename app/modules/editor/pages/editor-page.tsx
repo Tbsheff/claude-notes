@@ -248,6 +248,47 @@ function EditorContent() {
     return () => clearTimeout(t)
   }, [content, currentNote, lastSavedContent, getMarkdownContent])
 
+  const handleApplyChanges = async (data: { action: string; content: string; newNote?: Note }) => {
+    const { action, content, newNote } = data
+    
+    if (action === 'create' && newNote) {
+      try {
+        setCurrentNote(newNote)
+        setContent(markdownToHtml(content))
+        setLastSavedContent(content)
+        reloadSidebar()
+      } catch (error) {
+        console.error('Failed to switch to new document:', error)
+      }
+    } else if (action === 'delete') {
+      try {
+        reloadSidebar()
+        
+        const list = await editorApi.listNotes()
+        if (list.success && list.data && list.data.length > 0) {
+          const nextNote = list.data[0]
+          const res = await editorApi.loadNote(nextNote.id)
+          if (res.success && res.data) {
+            setCurrentNote(res.data)
+            setContent(markdownToHtml(res.data.content || ''))
+            setLastSavedContent(res.data.content || '')
+          } else {
+            setCurrentNote(nextNote)
+            setContent(markdownToHtml(nextNote.content || ''))
+            setLastSavedContent(nextNote.content || '')
+          }
+        } else {
+          await createNewNote()
+        }
+      } catch (error) {
+        console.error('Failed to handle document deletion:', error)
+        await createNewNote()
+      }
+    } else {
+      setContent(markdownToHtml(content))
+    }
+  }
+
   return (
     <div className="w-full h-screen max-h-screen flex bg-background">
       <NotesSidebar
@@ -276,7 +317,7 @@ function EditorContent() {
             ...currentNote,
             content: getMarkdownContent()
           } : undefined}
-          onApplyChanges={(newContent: string) => setContent(markdownToHtml(newContent))}
+          onApplyChanges={handleApplyChanges}
         />
     </div>
   )

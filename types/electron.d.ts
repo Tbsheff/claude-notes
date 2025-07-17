@@ -29,6 +29,7 @@ export interface ElectronAPI {
     get: (chatId: string) => Promise<{ success: boolean; chat?: any; error?: string }>;
     list: () => Promise<{ success: boolean; chats?: any[]; error?: string }>;
     updateMessage: (message: UnifiedMessage) => Promise<{ success: boolean; error?: string }>;
+    updateTitle: (chatId: string, title: string) => Promise<{ success: boolean; error?: string }>;
     delete: (chatId: string) => Promise<{ success: boolean; error?: string }>;
   };
   app: {

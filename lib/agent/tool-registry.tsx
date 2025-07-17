@@ -1,10 +1,11 @@
 import { FC } from 'react'
-import { ToolBlock, Note } from './types'
+import { ToolBlock } from './types'
+import { Note } from '@/app/modules/editor/api/types'
 
 export interface ToolComponentProps {
   block: ToolBlock;
   currentNote?: Note;
-  onApplyChanges?: (newContent: string) => void;
+  onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void;
   onUpdateBlock?: (block: ToolBlock) => void;
 }
 

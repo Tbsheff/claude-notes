@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
@@ -10,21 +10,34 @@ import { addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/
 import { cn } from '@/lib/utils'
 import { ChatSwitcher } from './chat-switcher'
 import { v4 as uuidv4 } from 'uuid'
+import { agentApi, createUserMessage, createAssistantMessage, createSystemMessage } from '../api'
+import { useAutoScroll } from '@/hooks/use-auto-scroll'
+import { Note } from '@/app/modules/editor/api/types'
 
-export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any) {
+interface AgentChatProps {
+  isOpen: boolean
+  onToggle: () => void
+  currentNote?: Note
+  onApplyChanges: (data: { action: string; content: string; newNote?: Note }) => void
+}
+
+export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: AgentChatProps) {
   const [messages, setMessages] = useState<UnifiedMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [activeTitle, setActiveTitle] = useState<string | null>(null)
 
   const streamPartsRef = useRef<Record<string, any[]>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages]);
+  useAutoScroll(scrollRef, [messages])
+
+  const showThinkingMessage = useMemo(() => {
+    if (!isLoading) return false
+    const streaming = messages.find(m => m.metadata?.isStreaming)
+    return !streaming || streaming.blocks.length === 0
+  }, [isLoading, messages])
 
   useEffect(() => {
     if (currentChatId) {
@@ -44,27 +57,26 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       streamPartsRef.current[streamId] = newParts
 
       setMessages(prev => 
-        prev.map(m => 
-          m.id === streamId ? processStreamParts(streamId, newParts, m) : m
-        )
+        agentApi.updateMessageById(prev, streamId, (m) => processStreamParts(streamId, newParts, m))
       )
     }
 
-    const handleStreamComplete = (_event: any, data: { streamId: string }) => {
+    const handleStreamComplete = async (_event: any, data: { streamId: string }) => {
       const { streamId } = data
       const finalParts = streamPartsRef.current[data.streamId] || []
       if (finalParts.length > 0) {
         const finalMessage = processStreamParts(streamId, finalParts)
         finalMessage.metadata.isStreaming = false
-        setMessages(prev => prev.map(m => m.id === streamId ? finalMessage : m))
-        window.electronAPI.chats.updateMessage(finalMessage)
+        setMessages(prev => agentApi.updateMessageById(prev, streamId, () => finalMessage))
+        
+        await agentApi.updateMessage(finalMessage)
         console.log('📝 Assistant message updated in DB:', finalMessage.id)
       }
       delete streamPartsRef.current[data.streamId]
       setIsLoading(false)
     }
 
-    const handleClaudeCodeEventLocal = (_event: any, event: any) => {
+    const handleClaudeCodeEventLocal = async (_event: any, event: any) => {
       if (!event || !event.toolCallId) return
       const { toolCallId } = event
       addClaudeCodeLog(toolCallId, event)
@@ -87,12 +99,14 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
         })
         if (updated) {
           const newMsg = { ...msg, blocks: newBlocks }
-          window.electronAPI.chats.updateMessage(newMsg)
+          agentApi.updateMessage(newMsg).catch(() => {})
           return newMsg
         }
         return msg
       }))
     }
+
+
 
     window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
     window.electronAPI.ipcRenderer.on('ai-stream-complete', handleStreamComplete)
@@ -102,86 +116,54 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       window.electronAPI.ipcRenderer.removeListener('ai-stream-part', handleStreamPart)
       window.electronAPI.ipcRenderer.removeListener('ai-stream-complete', handleStreamComplete)
       window.electronAPI.ipcRenderer.removeListener('claude-code-event', handleClaudeCodeEventLocal)
+      
+      Object.keys(streamPartsRef.current).forEach(key => {
+        delete streamPartsRef.current[key]
+      })
     }
   }, [])
 
-  const handleUpdateMessage = (message: UnifiedMessage) => {
-    setMessages(prev => prev.map(m => m.id === message.id ? message : m))
-    window.electronAPI.chats.updateMessage(message)
+  const handleUpdateMessage = async (message: UnifiedMessage) => {
+    setMessages(prev => agentApi.updateMessageById(prev, message.id, () => message))
+    await agentApi.updateMessage(message)
     console.log('📝 Message updated after tool interaction:', message.id)
   }
 
   const loadChatMessages = async (chatId: string) => {
-    const result = await window.electronAPI.chats.getMessages(chatId)
-    if (result.success && result.messages) {
-      setMessages(result.messages)
+    try {
+      const messages = await agentApi.loadChatMessages(chatId)
+      setMessages(messages)
+    } catch (error) {
+      console.error('❌ Failed to load chat messages:', error)
+      setMessages([])
     }
   }
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim() || isLoading) return
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading || !window.electronAPI) return
 
-    const userMessage: UnifiedMessage = {
-      id: uuidv4(),
-      content: inputValue,
-      role: 'user',
-      blocks: [{
-        id: uuidv4(),
-        type: 'text',
-        status: 'completed',
-        data: { text: inputValue }
-      }],
-      metadata: {
-        timestamp: new Date()
-      },
-      toolInvocations: []
-    }
-
+    const userMessage = createUserMessage(inputValue)
+    const userInputSnapshot = inputValue
     const currentMessagesSnapshot = [...messages, userMessage]
+    
     setMessages(prev => [...prev, userMessage])
     setInputValue('')
     setIsLoading(true)
 
-    ;(async () => {
-      let chatId = currentChatId
-      if (!chatId) {
-        const newChatId = uuidv4()
-        const now = Date.now()
+    try {
+      const chatId = await agentApi.ensureChatExists(
+        currentChatId,
+        userInputSnapshot,
+        { setCurrentChatId, setActiveTitle }
+      )
 
-        await window.electronAPI.chats.create({
-          id: newChatId,
-          title: 'New Chat',
-          createdAt: now,
-          updatedAt: now
-        })
-
-        chatId = newChatId
-
-        ;(async () => {
-          const titleResult = await window.electronAPI.ai.generateTitle(inputValue)
-
-          if (titleResult.success && titleResult.title) {
-            const updateFn = (window.electronAPI.chats as any).updateTitle
-            if (typeof updateFn === 'function') {
-              await updateFn(newChatId, titleResult.title)
-            }
-          }
-        })()
-      }
-
-      await window.electronAPI.chats.addMessage(chatId, userMessage)
+      await agentApi.addMessage(chatId, userMessage)
 
       const assistantMessageId = uuidv4()
-      const assistantMessage: UnifiedMessage = {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        blocks: [],
-        metadata: { timestamp: new Date(), isStreaming: true, streamId: assistantMessageId },
-        toolInvocations: []
-      }
+      const assistantMessage = createAssistantMessage(assistantMessageId)
+      
       setMessages(prev => [...prev, assistantMessage])
-      await window.electronAPI.chats.addMessage(chatId, assistantMessage)
+      await agentApi.addMessage(chatId, assistantMessage)
       console.log('📝 Assistant message placeholder created in DB:', assistantMessageId)
 
       if (chatId !== currentChatId) {
@@ -191,14 +173,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       streamPartsRef.current[assistantMessageId] = []
 
       if (currentNote && currentNote.content && currentNote.content.trim()) {
-        const systemMessage: UnifiedMessage = {
-          id: 'system-document',
-          content: `Current document content:\n\n${currentNote.content}`,
-          role: 'assistant',
-          blocks: [],
-          metadata: { timestamp: new Date() },
-          toolInvocations: []
-        }
+        const systemMessage = createSystemMessage(`Current document content:\n\n${currentNote.content}`)
         currentMessagesSnapshot.unshift(systemMessage)
       }
 
@@ -208,30 +183,43 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
         noteContent: currentNote?.content,
         streamId: assistantMessageId,
       }
-      const response = await (window.electronAPI.ai.agentStream as any)(payload)
-
-      if (!response.success) {
-        console.log('❌ handleSendMessage: Response failed')
-        setIsLoading(false)
-        setMessages(prev => prev.filter(m => m.id !== assistantMessageId))
-      }
-    })()
+      
+      await agentApi.startAgentStream(payload)
+    } catch (error) {
+      console.error('❌ Failed to send message:', error)
+      setIsLoading(false)
+      setInputValue(userInputSnapshot)
+      setMessages(prev => prev.slice(0, -1))
+    }
   }
 
-  const handleSelectChat = (chatId: string) => {
+  const handleSelectChat = async (chatId: string) => {
     setCurrentChatId(chatId)
+    const chat = await agentApi.getChat(chatId)
+    if (chat) {
+      setActiveTitle(chat.title || 'Untitled')
+    }
   }
 
   const handleCreateChat = () => {
     setCurrentChatId(null)
     setMessages([])
+    setActiveTitle('New Chat')
+    Object.keys(streamPartsRef.current).forEach(key => {
+      delete streamPartsRef.current[key]
+    })
   }
 
   const handleDeleteChat = async (chatId: string) => {
-    await window.electronAPI.chats.delete(chatId)
-    if (currentChatId === chatId) {
-      setCurrentChatId(null)
-      setMessages([])
+    try {
+      await agentApi.deleteChat(chatId)
+      if (currentChatId === chatId) {
+        setCurrentChatId(null)
+        setMessages([])
+        setActiveTitle('New Chat')
+      }
+    } catch (error) {
+      
     }
   }
 
@@ -241,18 +229,21 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
       isOpen ? "w-[480px]" : "w-0 overflow-hidden"
     )}>
       <div className="h-full flex flex-col w-full">
-        <div className="flex items-center justify-between p-2 border-b border-border">
-          <ChatSwitcher
-            currentChatId={currentChatId}
-            onSelectChat={handleSelectChat}
-            onCreateChat={handleCreateChat}
-            onDeleteChat={handleDeleteChat}
-          />
+        <div className="flex items-center justify-between border-b border-border">
+          <div className="flex-1 min-w-0">
+            <ChatSwitcher
+              currentChatId={currentChatId}
+              onSelectChat={handleSelectChat}
+              onDeleteChat={handleDeleteChat}
+              onCreateChat={handleCreateChat}
+              currentChatTitle={activeTitle || undefined}
+            />
+          </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 mr-2 hover:bg-muted rounded-md"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -270,11 +261,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: any
                   onUpdateMessage={handleUpdateMessage}
                 />
               ))}
-              {isLoading && (() => {
-                const streaming = messages.find(m => m.metadata?.isStreaming)
-                if (!streaming) return true
-                return streaming.blocks.length === 0
-              })() && (
+              {showThinkingMessage && (
                 <ThinkingMessage />
               )}
             </div>

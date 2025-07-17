@@ -52,14 +52,14 @@ export interface AgentMessageProps {
 export interface ChatMessageProps {
   message: UnifiedMessage;
   currentNote?: Note;
-  onApplyChanges?: (newContent: string) => void;
+  onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void;
   onUpdateMessage?: (message: UnifiedMessage) => void;
 }
 
 export interface ToolComponentProps {
   block: ToolBlock;
   currentNote?: Note;
-  onApplyChanges?: (newContent: string) => void;
+  onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void;
 }
 
 export interface TreeToolActionProps {

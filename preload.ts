@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     get: (chatId) => ipcRenderer.invoke('chats:get', chatId),
     list: () => ipcRenderer.invoke('chats:list'),
     updateMessage: (message) => ipcRenderer.invoke('chats:updateMessage', message),
+    updateTitle: (chatId, title) => ipcRenderer.invoke('chats:updateTitle', chatId, title),
     delete: (chatId) => ipcRenderer.invoke('chats:delete', chatId)
   },
   app: {
