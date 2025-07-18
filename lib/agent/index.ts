@@ -17,15 +17,7 @@ export function createAgentStream(messages: any[], options: { noteId?: string, n
     messages,
     toolCallStreaming: true,
     tools,
-    onChunk({ chunk }) {
-      console.log('🧩 onChunk: Full chunk:', JSON.stringify(chunk, null, 2))
-    },
-    onFinish(result) {
-      console.log('🏁 onFinish: Stream finished with reason:', result.finishReason)
-      console.log('🏁 onFinish: Usage:', result.usage)
-      console.log('🏁 onFinish: Response messages:', result.response?.messages?.length)
-    },
-    onError: (error) => console.error('❌ Agent stream error:', error),
+    onError: (error) => {},
     ...options
   })
 }

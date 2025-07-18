@@ -1,6 +1,6 @@
 import { query, type SDKMessage } from '@anthropic-ai/claude-code'
 import { AgentConfig, AgentResponse, WorkspaceConfig, WorkspaceResult } from './types'
-import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from './main-prompt'
+import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from './prompt'
 import { ClaudeCodeLogger, getQueryOptions } from './logger'
 import { WorkspaceManager } from '../../workspace/manager'
 import { Validator } from '../../workspace/validator'
@@ -54,14 +54,10 @@ export class ClaudeCodeAgent {
         throw new Error('Agent not initialized. Call initialize() first.')
       }
 
-      console.log('🚀 Starting workspace-isolated AI processing...')
-
       workspaceResult = await manager.create()
       if (!workspaceResult.success) {
         throw new Error(`Failed to create workspace: ${workspaceResult.error}`)
       }
-
-      console.log('📁 Workspace created at:', workspaceResult.workspacePath)
       ClaudeCodeLogger.logStart()
 
       const workspacePrompt = createWorkspacePrompt(workspaceResult.workspacePath!)
@@ -73,29 +69,22 @@ export class ClaudeCodeAgent {
       })
 
       if (workspaceConfig.validateAfter) {
-        console.log('🔍 Validating workspace changes...')
-        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validating workspace changes...', icon: '🔍' })
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validating workspace changes...', icon: '→' })
         const validator = new Validator(workspaceResult.workspacePath!, workspaceConfig.timeoutMs)
         const validationResult = await validator.validate()
         
         workspaceResult.validationResult = validationResult
         
         if (!validationResult.success) {
-          console.log('❌ Validation failed - changes will NOT be applied to main project')
-          console.log('🔍 Validation error:', validationResult.error)
           throw new Error(`Validation failed: ${validationResult.error}`)
         }
-        
-        console.log('✅ Validation passed - safe to apply changes!')
       }
 
-      console.log('📋 Applying changes to main codebase...')
-      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Applying changes to main codebase...', icon: '📋' })
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Applying changes to main codebase...', icon: '→' })
       const changedFilesCount = await manager.applyChanges()
 
       const response = this.extractResponse(messages)
       
-      console.log('✅ Workspace processing completed successfully!')
       ClaudeCodeLogger.logComplete()
       
       if (workspaceResult) {
@@ -110,7 +99,6 @@ export class ClaudeCodeAgent {
 
     } catch (error) {
       ClaudeCodeLogger.logError(error)
-      console.log('❌ Workspace processing failed:', error)
       
       return { 
         success: false, 
@@ -119,7 +107,6 @@ export class ClaudeCodeAgent {
       }
     } finally {
       if (workspaceResult?.workspacePath) {
-        console.log('🧹 Cleaning up workspace...')
         await manager.cleanup()
       }
     }

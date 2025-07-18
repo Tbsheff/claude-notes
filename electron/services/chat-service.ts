@@ -50,7 +50,6 @@ export const ChatService = {
   },
 
   updateMessage: (message: UnifiedMessage) => {
-    console.log('✅ Updating message in DB:', message.id)
     db.update(messages)
       .set({
         content: message.content,
@@ -61,7 +60,6 @@ export const ChatService = {
   },
 
   updateChatTitle: (chatId: string, title: string) => {
-    console.log('✅ Updating chat title in DB:', chatId, title)
     db.update(chats)
       .set({
         title,

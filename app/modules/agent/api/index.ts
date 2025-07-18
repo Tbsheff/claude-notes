@@ -50,6 +50,7 @@ export const agentApi = {
     callbacks: {
       setCurrentChatId: (id: string) => void
       setActiveTitle: (title: string) => void
+      fetchChats?: () => void
     }
   ): Promise<string> => {
     if (currentChatId) return currentChatId
@@ -148,6 +149,7 @@ const generateTitle = async (
   message: string,
   callbacks: {
     setActiveTitle: (title: string) => void
+    fetchChats?: () => void
   }
 ) => {
   try {
@@ -155,6 +157,7 @@ const generateTitle = async (
     if (titleResult.success && titleResult.title) {
       await window.electronAPI.chats.updateTitle(chatId, titleResult.title)
       callbacks.setActiveTitle(titleResult.title)
+      callbacks.fetchChats?.()
     }
   } catch (error) {
     console.error('Title generation failed:', error)

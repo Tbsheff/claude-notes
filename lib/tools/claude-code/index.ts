@@ -6,27 +6,29 @@ export function createClaudeCodeTool(mainWindow: BrowserWindow) {
   return tool({
     description: 'Execute Claude Code agent for complex coding tasks, file editing, and project analysis',
     parameters: z.object({
-      task: z.string().describe('The specific coding task or request to perform')
+      task: z.string().describe('The specific coding task or request to perform'),
+      feature_name: z.string().optional().describe('2-3 words description of the feature being implemented (use Title Case with Capital Letters)')
     }),
-    execute: async ({ task }, context) => {
+    execute: async ({ task, feature_name }, context) => {
       try {
         const { ClaudeCodeLogger } = await import('./logger')
         
-        // Set current toolCallId for global access
+
         ClaudeCodeLogger.setCurrentToolCallId(context.toolCallId)
+        if (feature_name) {
+          ClaudeCodeLogger.setCurrentFeatureName(feature_name)
+        }
         
-        // Set callback with toolCallId context from AI SDK v4
+
         ClaudeCodeLogger.setEventCallback((event) => {
-          // Add toolCallId to events for specific tool block targeting
           const eventWithId = { ...event, toolCallId: context.toolCallId }
-          console.log('🔥 [claude-code] Sending event:', eventWithId)
           mainWindow?.webContents.send('claude-code-event', eventWithId)
         })
         
-        // Start processing with real-time streaming
+
         const { processRequest } = await import('../../../electron/services/ai-service')
         
-        // Process request with streaming enabled
+
         const response = await processRequest(task, () => {})
         
         if (response?.success) {
@@ -53,5 +55,5 @@ export function createClaudeCodeTool(mainWindow: BrowserWindow) {
 
 export * from './core'
 export { ClaudeCodeLogger, cleanWorkspacePath, getFileName, getDirName, truncateCommand, processToolMessage, getQueryOptions } from './logger' 
-export * from './main-prompt'
+export * from './prompt'
 export * from './types' 

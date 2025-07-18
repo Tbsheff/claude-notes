@@ -38,7 +38,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="w-full rounded-xl border-border p-1 border bg-card">
+    <div className="w-full rounded-lg border-border p-1 border bg-card">
       <div className="flex items-center gap-2">
         <div className="flex-1">
           <Textarea

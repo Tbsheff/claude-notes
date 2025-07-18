@@ -1,5 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-code'
-import { MAIN_SYSTEM_PROMPT } from './main-prompt'
+import { MAIN_SYSTEM_PROMPT } from './prompt'
 
 export const cleanWorkspacePath = (path: string) => {
   if (path.includes('.agent-workspace-') || path.includes('/var/folders/')) {
@@ -70,6 +70,19 @@ export const processToolMessage = (toolName: string, toolInput: any) => {
       const globPattern = toolInput.pattern || toolInput.glob || 'unknown'
       return `Glob: ${globPattern}`
     }
+    case 'Task': {
+      if (Array.isArray(toolInput)) {
+        const taskCount = toolInput.length
+        const firstTaskDesc = toolInput[0]?.description || 'unknown task'
+        return taskCount > 1 ? `Tasks: ${firstTaskDesc} (+${taskCount - 1} more)` : `Task: ${firstTaskDesc}`
+      }
+      const description = toolInput.description || 'unknown task'
+      return `Task: ${description}`
+    }
+    case 'MultiEdit': {
+      const filePath = toolInput.file_path || toolInput.path || 'unknown file'
+      return `MultiEdit: ${getFileName(filePath)}`
+    }
     default: {
       if (typeof toolInput === 'object' && toolInput !== null) {
         if (toolInput.pattern) return `${toolName}: "${toolInput.pattern}"`
@@ -98,12 +111,11 @@ function buildAllowedTools(workspaceDir: string): string[] {
     'Bash(npm run dev)',
     'Bash(npm run lint)',
     'Bash(npm run test)',
-    'Bash(npm ci)',
-    'Bash(npm install)',
+    'Bash(npm run build:vite)',
+    'Bash(npm run build:electron)',
+    'Bash(npm run dev:electron)',
+    'Bash(npm run watch-dev)',
     'Bash(npm run electron)',
-    'Bash(npm run electron:dev)',
-    'Bash(npm run electron:build)',
-    'Bash(npm run electron:pack)',
     `Bash(mkdir ${workspaceDir}/*)`,
     `Bash(ls ${workspaceDir}/*)`,
     `Bash(cat ${workspaceDir}/*)`,
@@ -140,6 +152,7 @@ export interface ClaudeEvent {
 
 let eventCallback: ((event: ClaudeEvent) => void) | null = null
 let currentToolCallId: string | null = null
+let currentFeatureName: string | null = null
 
 export class ClaudeCodeLogger {
   static setEventCallback(callback: (event: ClaudeEvent) => void) {
@@ -156,6 +169,14 @@ export class ClaudeCodeLogger {
 
   static getCurrentToolCallId() {
     return currentToolCallId
+  }
+
+  static setCurrentFeatureName(featureName: string) {
+    currentFeatureName = featureName
+  }
+
+  static getCurrentFeatureName() {
+    return currentFeatureName
   }
 
   static emitEvent(event: Omit<ClaudeEvent, 'timestamp'>) {
@@ -176,7 +197,7 @@ export class ClaudeCodeLogger {
       : msg.message.content
 
     if (content) {
-      this.emitEvent({ type: 'assistant_message', message: `Agent: ${content}`, icon: '💭' })
+      this.emitEvent({ type: 'assistant_message', message: `Agent: ${content}`, icon: '→' })
     }
 
     const toolCalls: any[] = (msg.message as any)?.tool_calls || []
@@ -203,7 +224,6 @@ export class ClaudeCodeLogger {
       toolInput = toolData.function.arguments ? JSON.parse(toolData.function.arguments) : {}
       toolUseId = toolData.id
     } else {
-      console.warn('Unknown tool data format:', toolData)
       return
     }
 
@@ -220,46 +240,46 @@ export class ClaudeCodeLogger {
   private static getToolIcon(name: string) {
     switch (name) {
       case 'Read':
-        return '📖'
+        return '↑'
       case 'Write':
-        return '📝'
+        return '↓'
       case 'Edit':
-        return '✏️'
+        return '→'
       case 'Bash':
-        return '⚡'
+        return '>'
       case 'List':
       case 'LS':
-        return '📁'
+        return '•'
       case 'Search':
-        return '🔍'
+        return '→'
       case 'Find':
-        return '🔎'
+        return '→'
       case 'Grep':
-        return '🔍'
+        return '→'
       default:
-        return '🔧'
+        return '→'
     }
   }
 
   static logToolResult(result: any, isError = false) {
     const resultStr = typeof result === 'string' ? result : JSON.stringify(result)
-    this.emitEvent({ type: isError ? 'error' : 'tool_result', message: resultStr, icon: isError ? '❌' : '📝' })
+    this.emitEvent({ type: isError ? 'error' : 'tool_result', message: resultStr, icon: isError ? '!' : '↓' })
   }
 
   static logStart() {
-    this.emitEvent({ type: 'start', message: 'Agent: Processing request...', icon: '🚀' })
+    this.emitEvent({ type: 'start', message: 'Agent: Processing request...', icon: '●' })
   }
 
   static logComplete() {
-    this.emitEvent({ type: 'complete', message: 'Agent: Task completed', icon: '✅' })
+    this.emitEvent({ type: 'complete', message: 'Agent: Task completed', icon: '○' })
   }
 
   static logReady() {
-    this.emitEvent({ type: 'ready', message: 'Agent ready', icon: '⚡' })
+    this.emitEvent({ type: 'ready', message: 'Agent ready', icon: '○' })
   }
 
   static logError(error: any) {
     const msg = error instanceof Error ? error.message : String(error)
-    this.emitEvent({ type: 'error', message: `Agent Error: ${msg}`, icon: '❌' })
+    this.emitEvent({ type: 'error', message: `Agent Error: ${msg}`, icon: '!' })
   }
 } 

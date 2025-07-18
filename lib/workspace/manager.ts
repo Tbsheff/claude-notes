@@ -29,12 +29,10 @@ export class WorkspaceManager {
       try {
         await fs.access(nodeModulesPath)
       } catch {
-        console.log('📦 Installing dependencies in workspace (npm ci --silent --ignore-scripts)...')
         try {
-          await execAsync('npm ci --silent --ignore-scripts', { cwd: this.workspacePath, timeout: 300000 })
-          console.log('✅ Dependencies installed')
+          await execAsync('npm install --silent', { cwd: this.workspacePath, timeout: 300000 })
         } catch (installError) {
-          console.log('⚠️ Failed to install dependencies in workspace:', installError)
+          
         }
       }
       
@@ -62,13 +60,12 @@ export class WorkspaceManager {
         await fs.mkdir(resolve(destPath, '..'), { recursive: true })
         await fs.copyFile(srcPath, destPath)
       } catch {
-        console.log('⚠️ Skipping file that cannot be copied:', file)
+        
       }
     }
   }
 
   async getFilesToCopy(): Promise<string[]> {
-    console.log('📁 Copying ENTIRE project to workspace for complete isolation')
     return await this.getAllFiles(this.projectRoot)
   }
 
@@ -110,6 +107,8 @@ export class WorkspaceManager {
       '.git'
     ]
     
+    if (relativePath === 'pnpm-lock.yaml') return true
+    
     return skipPaths.some(skip => 
       relativePath === skip || relativePath.startsWith(skip + '/')
     )
@@ -147,7 +146,7 @@ export class WorkspaceManager {
           }
         }
       } catch {
-        // If workspace file can't be read (e.g., binary), skip
+
       }
     }
     
@@ -172,7 +171,7 @@ export class WorkspaceManager {
         }
       }
     } catch {
-      // Ignore directory read errors
+      
     }
     
     return files
@@ -186,16 +185,12 @@ export class WorkspaceManager {
     const changedFiles = await this.getChangedFiles()
     
     if (changedFiles.length > 0) {
-      console.log('📋 Applying', changedFiles.length, 'changed files to main project')
-      
       const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
       ClaudeCodeLogger.emitEvent({ 
         type: 'tool_action', 
         message: `Applying ${changedFiles.length} changed files to main project...`, 
-        icon: '📋' 
+        icon: '→' 
       })
-    } else {
-      console.log('ℹ️ No files were changed by Claude')
     }
     
     for (const file of changedFiles) {
@@ -213,7 +208,7 @@ export class WorkspaceManager {
     try {
       await fs.rm(this.workspacePath, { recursive: true, force: true })
     } catch (error) {
-      console.log('⚠️ Failed to cleanup workspace:', error)
+      
     }
   }
 

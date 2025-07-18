@@ -1,4 +1,5 @@
 import type { Note, APIKeysSettings, AppSettings } from '../app/modules/editor/api/types'
+import type { UnifiedMessage } from '../lib/agent/types'
 
 export interface ElectronAPI {
   openFile: () => Promise<string | undefined>;
@@ -7,7 +8,7 @@ export interface ElectronAPI {
   ai: {
     initialize: (config?: { apiKey?: string }) => Promise<{ success: boolean, error?: string }>;
     processRequest: (message: string) => Promise<{ success: boolean, response?: string, error?: string, changedFiles?: string[], workspaceResult?: { changedFilesCount?: number } }>;
-    agentStream: (messages: Array<{ role: 'user' | 'assistant', content: string }>) => Promise<{ success: boolean, streamId?: string, error?: string }>;
+    agentStream: (payload: { messages: Array<{ role: 'user' | 'assistant', content: string }>, noteId?: string, noteContent?: string, streamId?: string, chatId?: string }) => Promise<{ success: boolean, streamId?: string, error?: string }>;
     generateTitle: (userMessage: string) => Promise<{ success: boolean, title?: string, error?: string }>;
   };
   llmCall: (messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }>, model?: string) => Promise<{ success: boolean, content?: string, error?: string }>;

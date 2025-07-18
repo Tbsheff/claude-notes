@@ -1,7 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { FileText, Edit3, Search, FolderOpen, Code, Wrench, CheckSquare, Loader2 } from 'lucide-react'
 import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
 import { TreeToolAction, CollapseToolAction } from './tool-actions'
-import { CollapsibleTool } from './collapsible-tool'
 import { ToolBlock } from '@/lib/agent/types'
 import { toolRegistry } from '@/lib/agent/tool-registry'
 import { markdownToHtml } from '@/lib/markdown'
@@ -168,40 +168,59 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
 export function ClaudeCodeChatBlock({ block }: { block: ToolBlock }) {
   const { args, logs = [], currentStatus } = block.data
   const isExecuting = block.status === 'executing'
+  const logsContainerRef = useRef<HTMLDivElement>(null)
   
   const getStatusText = () => {
-    return currentStatus || (isExecuting ? 'Processing request...' : 'Ready')
+    if (currentStatus) {
+      return currentStatus
+    }
+    
+    const featureName = args?.feature_name
+    if (featureName) {
+      return isExecuting ? `${featureName}: Processing request...` : `${featureName}: Ready`
+    }
+    
+    return isExecuting ? 'Processing request...' : 'Ready'
   }
 
+  useEffect(() => {
+    if (logsContainerRef.current && logs.length > 0) {
+      const container = logsContainerRef.current
+      container.scrollTop = container.scrollHeight
+    }
+  }, [logs])
+
   return (
-    <CollapsibleTool
-      title={getStatusText()}
-      icon={isExecuting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Code className="h-3 w-3" />}
-      dataTestId={isExecuting ? 'claude-code-executing' : 'claude-code-completed'}
-    >
-      <div className="space-y-2">
-        {args?.task && (
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Task:</span> {args.task}
-          </div>
-        )}
-        
-        {logs && logs.length > 0 ? (
-          <div className="space-y-1">
-            {logs.map((line: string, idx: number) => (
-              <div key={idx} className="flex gap-2 text-xs font-mono">
-                <span className="text-muted-foreground shrink-0">{line.slice(0,2)}</span>
-                <span className="break-all">{line.slice(2)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-muted-foreground text-xs">
-            {isExecuting ? 'Initializing...' : 'No logs available'}
-          </div>
-        )}
+    <div className="bg-muted/30 rounded-md p-3 space-y-2 border border-border/50">
+      <div className="flex items-center gap-2">
+        {isExecuting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Code className="h-3 w-3" />}
+        <span className="text-sm font-medium">{getStatusText()}</span>
       </div>
-    </CollapsibleTool>
+      
+      {logs && logs.length > 0 ? (
+        <div 
+          ref={logsContainerRef}
+          className="space-y-1 max-h-32 overflow-y-auto py-2 [&::-webkit-scrollbar]:hidden"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)",
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          {logs.map((line: string, idx: number) => (
+            <div key={idx} className="flex gap-2 text-xs font-mono">
+              <span className="text-muted-foreground shrink-0">{line.slice(0,2)}</span>
+              <span className="break-all">{line.slice(2)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-muted-foreground text-xs">
+          {isExecuting ? 'Initializing...' : 'No logs available'}
+        </div>
+      )}
+    </div>
   )
 }
 

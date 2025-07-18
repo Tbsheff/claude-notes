@@ -17,44 +17,60 @@ export function setupFileWatcher(getMainWindow: () => any, getChangedFiles: () =
     ignoreInitial: true,
   })
 
-  watcher.on('ready', () => console.log('🔍 File watcher ready'))
-  watcher.on('change', (p) => { console.log(`📁 Changed: ${p}`); getChangedFiles().add(p) })
-  watcher.on('add', (p) => console.log(`➕ Added: ${p}`))
-  watcher.on('unlink', (p) => console.log(`➖ Removed: ${p}`))
-  watcher.on('error', (err) => console.error('❌ Watcher error:', err))
+  watcher.on('ready', () => {})
+  watcher.on('change', (p) => { getChangedFiles().add(p) })
+  watcher.on('add', (p) => {})
+  watcher.on('unlink', (p) => {})
+  watcher.on('error', (err) => {})
 
   return {
     rebuildAfterClaudeFinished: async () => {
       const changed = getChangedFiles()
       if (!changed.size) return
-      console.log(`🔄 Auto-rebuilding after ${changed.size} changes`)
-      console.log('📝', [...changed].join(', '))
+      
       try {
         const proc = spawn('npm', ['run', 'build'], { stdio: 'inherit' })
         proc.on('close', async (code) => {
           const win = getMainWindow()
           if (code === 0) {
-            console.log('✅ Rebuilt, reloading…')
-            
             try {
               const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
               ClaudeCodeLogger.emitGlobalEvent({ 
                 type: 'tool_action', 
                 message: 'Rebuild completed', 
-                icon: '✅' 
+                icon: '○' 
               })
             } catch (e) {
-              console.error('Failed to emit rebuild completion event:', e)
+              
             }
             
             win?.reload()
           } else {
-            console.error('❌ Build failed')
+            try {
+              const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
+              ClaudeCodeLogger.emitGlobalEvent({ 
+                type: 'tool_action', 
+                message: 'Rebuild failed', 
+                icon: '!' 
+              })
+            } catch (e) {
+              
+            }
           }
           changed.clear()
         })
       } catch (e) {
-        console.error('❌ Rebuild error', e)
+        try {
+          const { ClaudeCodeLogger } = await import('../../lib/tools/claude-code/logger')
+          ClaudeCodeLogger.emitGlobalEvent({ 
+            type: 'tool_action', 
+            message: 'Rebuild error', 
+            icon: '!' 
+          })
+        } catch (err) {
+          
+        }
+        
         changed.clear()
       }
     },

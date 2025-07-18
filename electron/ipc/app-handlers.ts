@@ -10,7 +10,6 @@ export function setupAppHandlers(getMainWindow: () => any) {
 
   ipcMain.handle('app:rebuildAndReload', async () => {
     try {
-      console.log('🔄 Manual rebuild requested...')
       return { success: true, message: 'Auto-rebuild will trigger when files change' }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) }

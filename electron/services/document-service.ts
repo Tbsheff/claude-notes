@@ -15,13 +15,9 @@ export interface DocumentUpdateRequest {
 export async function updateDocument(request: DocumentUpdateRequest) {
   try {
     if (!mainWindow) {
-      console.error('❌ Main window not available in updateDocument')
       return { success: false, error: 'Main window not available' }
     }
 
-    console.log('📝 Document update requested:', request)
-
-    // Send the update to the renderer process
     mainWindow.webContents.send('document-update', request)
 
     return { 
@@ -31,7 +27,6 @@ export async function updateDocument(request: DocumentUpdateRequest) {
       textLength: request.text.length
     }
   } catch (error) {
-    console.error('❌ Document update error:', error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : String(error) 
@@ -42,7 +37,6 @@ export async function updateDocument(request: DocumentUpdateRequest) {
 export async function getCurrentDocument(): Promise<string> {
   try {
     if (!mainWindow) {
-      console.log('❌ Main window not available in getCurrentDocument')
       return ''
     }
 
@@ -51,7 +45,6 @@ export async function getCurrentDocument(): Promise<string> {
     return new Promise((resolve) => {
       const handleResponse = (_event: any, content: string) => {
         (window.webContents as any).removeListener('document-content-response', handleResponse)
-        console.log('📄 Document service received content:', typeof content === 'string' ? content.length : 'undefined', 'characters')
         resolve(content || '')
       }
 
@@ -64,7 +57,6 @@ export async function getCurrentDocument(): Promise<string> {
       }, 2000)
     })
   } catch (error) {
-    console.error('❌ getCurrentDocument error:', error)
     return ''
   }
 } 

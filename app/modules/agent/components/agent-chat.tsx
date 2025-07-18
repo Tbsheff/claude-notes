@@ -8,7 +8,8 @@ import { UnifiedMessage } from '@/lib/agent/types'
 import { processStreamParts } from '@/lib/agent/part-processor'
 import { addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/agent/part-processor'
 import { cn } from '@/lib/utils'
-import { ChatSwitcher } from './chat-switcher'
+import { ChatSwitcher } from './agent-chat-tabs'
+import { AgentChatPopover } from './agent-chat-popover'
 import { v4 as uuidv4 } from 'uuid'
 import { agentApi, createUserMessage, createAssistantMessage, createSystemMessage } from '../api'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
@@ -30,6 +31,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
 
   const streamPartsRef = useRef<Record<string, any[]>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+  const chatSwitcherRef = useRef<any>(null)
 
   useAutoScroll(scrollRef, [messages])
 
@@ -39,9 +41,12 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
     return !streaming || streaming.blocks.length === 0
   }, [isLoading, messages])
 
+
+
   useEffect(() => {
     if (currentChatId) {
       loadChatMessages(currentChatId)
+      localStorage.setItem('last-opened-chat', currentChatId)
     } else {
       setMessages([])
     }
@@ -70,7 +75,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
         setMessages(prev => agentApi.updateMessageById(prev, streamId, () => finalMessage))
         
         await agentApi.updateMessage(finalMessage)
-        console.log('📝 Assistant message updated in DB:', finalMessage.id)
+
       }
       delete streamPartsRef.current[data.streamId]
       setIsLoading(false)
@@ -91,7 +96,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
               data: {
                 ...block.data,
                 logs: [...getClaudeCodeLogs(toolCallId)],
-                currentStatus: getClaudeCodeStatus(toolCallId)
+                currentStatus: getClaudeCodeStatus(toolCallId, block.data.args?.feature_name)
               }
             }
           }
@@ -105,8 +110,6 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
         return msg
       }))
     }
-
-
 
     window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
     window.electronAPI.ipcRenderer.on('ai-stream-complete', handleStreamComplete)
@@ -123,10 +126,29 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
     }
   }, [])
 
+  useEffect(() => {
+    const loadLastOpenedChat = async () => {
+      const lastChatId = localStorage.getItem('last-opened-chat')
+      if (lastChatId && !currentChatId) {
+        try {
+          const chat = await agentApi.getChat(lastChatId)
+          if (chat) {
+            setCurrentChatId(lastChatId)
+            setActiveTitle(chat.title || 'Untitled')
+          }
+        } catch (error) {
+  
+        }
+      }
+    }
+    
+    loadLastOpenedChat()
+  }, [])
+
   const handleUpdateMessage = async (message: UnifiedMessage) => {
     setMessages(prev => agentApi.updateMessageById(prev, message.id, () => message))
     await agentApi.updateMessage(message)
-    console.log('📝 Message updated after tool interaction:', message.id)
+
   }
 
   const loadChatMessages = async (chatId: string) => {
@@ -154,7 +176,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
       const chatId = await agentApi.ensureChatExists(
         currentChatId,
         userInputSnapshot,
-        { setCurrentChatId, setActiveTitle }
+        { setCurrentChatId, setActiveTitle, fetchChats: async () => {} }
       )
 
       await agentApi.addMessage(chatId, userMessage)
@@ -182,6 +204,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
         noteId: currentNote?.id,
         noteContent: currentNote?.content,
         streamId: assistantMessageId,
+        chatId: chatId,
       }
       
       await agentApi.startAgentStream(payload)
@@ -205,6 +228,7 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
     setCurrentChatId(null)
     setMessages([])
     setActiveTitle('New Chat')
+    localStorage.removeItem('last-opened-chat')
     Object.keys(streamPartsRef.current).forEach(key => {
       delete streamPartsRef.current[key]
     })
@@ -213,15 +237,39 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
   const handleDeleteChat = async (chatId: string) => {
     try {
       await agentApi.deleteChat(chatId)
+      
+      const savedTabs = localStorage.getItem('agent-chat-tabs')
+      if (savedTabs) {
+        try {
+          const tabs = JSON.parse(savedTabs)
+          const newTabs = tabs.filter((id: string) => id !== chatId)
+          localStorage.setItem('agent-chat-tabs', JSON.stringify(newTabs))
+        } catch (e) {
+          console.error('Failed to update tabs:', e)
+        }
+      }
+      
       if (currentChatId === chatId) {
-        setCurrentChatId(null)
-        setMessages([])
-        setActiveTitle('New Chat')
+        localStorage.removeItem('last-opened-chat')
+        
+        const result = await window.electronAPI.chats.list()
+        if (result.success && result.chats && result.chats.length > 0) {
+          const nextChat = result.chats[0]
+          setCurrentChatId(nextChat.id)
+          setActiveTitle(nextChat.title || 'Untitled')
+        } else {
+
+          setCurrentChatId(null)
+          setMessages([])
+          setActiveTitle(null)
+        }
       }
     } catch (error) {
-      
+      console.error('Failed to delete chat:', error)
     }
   }
+
+
 
   return (
     <div className={cn(
@@ -230,23 +278,29 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
     )}>
       <div className="h-full flex flex-col w-full">
         <div className="flex items-center justify-between border-b border-border">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 max-w-[340px] overflow-hidden">
             <ChatSwitcher
               currentChatId={currentChatId}
               onSelectChat={handleSelectChat}
-              onDeleteChat={handleDeleteChat}
               onCreateChat={handleCreateChat}
               currentChatTitle={activeTitle || undefined}
             />
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="h-8 w-8 p-0 mr-2 hover:bg-muted rounded-md"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1 mr-2">
+            <AgentChatPopover
+              currentChatId={currentChatId}
+              onSelectChat={handleSelectChat}
+              onDeleteChat={handleDeleteChat}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className="h-7 w-7 p-0 text-muted-foreground flex-shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">

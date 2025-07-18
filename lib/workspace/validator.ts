@@ -49,7 +49,6 @@ export class Validator {
       return { success: true }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      console.log('TypeScript check failed:', error)
       return { success: false, error: errorMsg }
     }
   }
@@ -63,7 +62,6 @@ export class Validator {
       return { success: true }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      console.log('ESLint errors detected (warnings allowed):', error)
       return { success: false, error: errorMsg }
     }
   }
@@ -72,7 +70,7 @@ export class Validator {
   private async checkBuild(): Promise<{success: boolean, error?: string}> {
     try {
       const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
-      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Compiling project...', icon: '🔧' })
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Compiling project...', icon: '●' })
       
       await execAsync('npm run build', {
         cwd: this.projectRoot,
@@ -81,7 +79,6 @@ export class Validator {
       return { success: true }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      console.log('Build check failed:', error)
       return { success: false, error: errorMsg }
     }
   }

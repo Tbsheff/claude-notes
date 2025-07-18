@@ -56,7 +56,7 @@ export function NotesSidebar({
         setNotes(result.data)
       }
     } catch (error) {
-      console.error('Failed to load notes:', error)
+      
     } finally {
       setLoading(false)
     }
@@ -68,7 +68,7 @@ export function NotesSidebar({
         await onDeleteNote(noteId)
         setNotes(notes.filter(n => n.id !== noteId))
       } catch (error) {
-        console.error('Failed to delete note:', error)
+        
       }
     }
   }
@@ -95,7 +95,7 @@ export function NotesSidebar({
         }
       }
     } catch (error) {
-      console.error('Failed to rename note:', error)
+      
     } finally {
       setEditingNoteId(null)
       setEditingTitle('')
@@ -108,7 +108,7 @@ export function NotesSidebar({
   }
 
   const handleExportNote = async (note: Note) => {
-    console.log('Export note:', note.title)
+    
   }
 
   const handleCreateNote = async () => {
@@ -116,7 +116,7 @@ export function NotesSidebar({
       await onCreateNote()
       await loadNotes()
     } catch (error) {
-      console.error('Failed to create note:', error)
+      
     }
   }
 
@@ -125,12 +125,12 @@ export function NotesSidebar({
     try {
       const result = await generalApi.exportWorkspace()
       if (result.success) {
-        console.log('Workspace exported successfully')
+        
       } else {
-        console.error('Failed to export workspace:', result.error)
+        
       }
     } catch (error) {
-      console.error('Export failed:', error)
+      
     } finally {
       setIsExporting(false)
     }
@@ -143,14 +143,9 @@ export function NotesSidebar({
     
     setIsResetting(true)
     try {
-      const result = await generalApi.resetFeatures('https://github.com/diko0071/ai-editor')
-      if (result.success) {
-        console.log('Features reset successfully')
-      } else {
-        console.error('Failed to reset features:', result.error)
-      }
+      await generalApi.resetFeatures('https://github.com/diko0071/ai-editor')
     } catch (error) {
-      console.error('Reset failed:', error)
+      
     } finally {
       setIsResetting(false)
     }

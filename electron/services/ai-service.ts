@@ -60,7 +60,7 @@ export async function processRequest(message: string, rebuildCallback: () => voi
           ClaudeCodeLogger.emitGlobalEvent({ 
             type: 'tool_action', 
             message: 'Rebuilding project...', 
-            icon: '🔄' 
+            icon: '●' 
           })
           rebuildCallback()
         }, 500)
@@ -88,7 +88,7 @@ export async function generateTitleForChat(userMessage: string) {
   try {
     const stored = await getStoredApiKeys()
     const messages = [
-      { role: 'user' as const, content: `Create a short, descriptive chat title (3-5 words) for this message: "${userMessage}"\n\nIMPORTANT: Return ONLY the title text without quotes, punctuation, or any formatting. Just plain text that summarize intent of the message.` }
+      { role: 'user' as const, content: `Create a short, descriptive chat title 2-4 words) for this message: "${userMessage}"\n\nIMPORTANT: Return ONLY the title text without quotes, punctuation, or any formatting. Just plain text that summarize intent of the message. Use Title Case (Capital Letters For Each Word). It should be human readble with spaces.` }
     ]
     const { llmCall } = await import('../../lib/llm/core')
     const result = await llmCall(messages, 'anthropic/claude-3-haiku-20240307', stored)
@@ -99,19 +99,24 @@ export async function generateTitleForChat(userMessage: string) {
       return { success: false, error: result.error || 'Failed to generate title' }
     }
   } catch (e) {
-    console.error('Error generating chat title:', e)
     return { success: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
 
-let conversationHistory: any[] = []
+let conversationHistories: Record<string, any[]> = {}
 
-export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string, streamId?: string }, rebuildCallback?: () => void) {
-  const { messages, noteId, noteContent, streamId } = payload
+export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string, streamId?: string, chatId?: string }, rebuildCallback?: () => void) {
+  const { messages, noteId, noteContent, streamId, chatId } = payload
   try {
     const { createAgentStream: createStream } = await import('../../lib/agent')
     const mainWindow = getMainWindow()
 
+    const currentChatId = chatId || 'default'
+    if (!conversationHistories[currentChatId]) {
+      conversationHistories[currentChatId] = []
+    }
+    const conversationHistory = conversationHistories[currentChatId]
+    
     const newMessages = messages.filter(msg => 
       !conversationHistory.some(existingMsg => existingMsg.role === msg.role && existingMsg.content === msg.content)
     )
@@ -141,7 +146,7 @@ export async function createAgentStream(payload: { messages: any[], noteId?: str
     })
     
     const finalStreamId = streamId || `stream-${Date.now()}`
-    processStreamChunks(streamResult, finalStreamId, rebuildCallback)
+    processStreamChunks(streamResult, finalStreamId, rebuildCallback, currentChatId)
     
     return { success: true, streamId: finalStreamId }
   } catch (e) {
@@ -149,7 +154,7 @@ export async function createAgentStream(payload: { messages: any[], noteId?: str
   }
 }
 
-async function processStreamChunks(streamResult: any, streamId: string, rebuildCallback?: () => void) {
+async function processStreamChunks(streamResult: any, streamId: string, rebuildCallback?: () => void, chatId?: string) {
   try {
     for await (const chunk of streamResult.fullStream) {
       mainWindow?.webContents.send('ai-stream-part', { streamId, part: chunk })
@@ -158,8 +163,12 @@ async function processStreamChunks(streamResult: any, streamId: string, rebuildC
     mainWindow?.webContents.send('ai-stream-complete', { streamId })
     
     const finalResult = await streamResult; 
-    if (finalResult.response?.messages) {
-      conversationHistory.push(...finalResult.response.messages)
+    if (finalResult.response?.messages && chatId) {
+      const currentChatId = chatId || 'default'
+      if (!conversationHistories[currentChatId]) {
+        conversationHistories[currentChatId] = []
+      }
+      conversationHistories[currentChatId].push(...finalResult.response.messages)
     }
     
     if (rebuildCallback) {

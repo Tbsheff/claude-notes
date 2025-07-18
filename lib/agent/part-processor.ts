@@ -11,7 +11,6 @@ export function addClaudeCodeLog(toolCallId: string, event: any) {
   if (event.type === 'assistant_message' || event.type === 'tool_action') {
     const formattedEvent = `${event.icon || '•'} ${event.message}`
     toolCallLogs[toolCallId].push(formattedEvent)
-    console.log('🔥 [part-processor] Added log for toolCallId:', toolCallId, 'logs count:', toolCallLogs[toolCallId].length)
   }
 }
 
@@ -23,22 +22,38 @@ export function clearClaudeCodeLogs(toolCallId: string) {
   delete toolCallLogs[toolCallId]
 }
 
-export function getClaudeCodeStatus(toolCallId: string): string {
+export function getClaudeCodeStatus(toolCallId: string, featureName?: string): string {
   const logs = toolCallLogs[toolCallId] || []
-  if (logs.length === 0) return 'Building...'
+  if (logs.length === 0) return featureName ? `${featureName}: Building...` : 'Building...'
   
   const lastLog = logs[logs.length - 1]
   
-  if (lastLog.includes('Validating workspace changes')) return 'Validating...'
-  if (lastLog.includes('Compiling project')) return 'Building...'
-  if (lastLog.includes('Applying changes to main codebase')) return 'Applying changes...'
-  if (lastLog.includes('changed files to main project')) return 'Applying changes...'
-  if (lastLog.includes('Task completed')) return 'Rebuilding...'
-  if (lastLog.includes('Rebuilding project')) return 'Rebuilding...'
-  if (lastLog.includes('Rebuild completed')) return 'Completed'
-  if (lastLog.includes('Agent ready')) return 'Completed'
+  const statusMap = {
+    'Validating workspace changes': 'Validating...',
+    'Compiling project': 'Building...',
+    'Applying changes to main codebase': 'Applying changes...',
+    'changed files to main project': 'Applying changes...',
+    'Task completed': 'Rebuilding...',
+    'Rebuilding project': 'Rebuilding...',
+    'Rebuild completed': 'Completed',
+    'Rebuild failed': 'Failed',
+    'Rebuild error': 'Error',
+    'Agent ready': 'Completed'
+  }
   
-  return 'Building...'
+  let status = 'Building...'
+  for (const [key, value] of Object.entries(statusMap)) {
+    if (lastLog.includes(key)) {
+      status = value
+      break
+    }
+  }
+  
+  if (featureName) {
+    return `${featureName}: ${status}`
+  }
+  
+  return status
 }
 
 export function processStreamParts(
@@ -149,7 +164,7 @@ export function handleClaudeCodeEvent(
           blocks: msg.blocks.map(block => {
             if (block.data.toolName === 'claude-code') {
               const freshLogs = getClaudeCodeLogs(block.data.toolCallId)
-              const status = getClaudeCodeStatus(block.data.toolCallId)
+              const status = getClaudeCodeStatus(block.data.toolCallId, block.data.args?.feature_name)
               return {
                 ...block,
                 data: { 

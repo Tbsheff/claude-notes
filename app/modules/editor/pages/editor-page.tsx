@@ -94,7 +94,7 @@ function EditorContent() {
         reloadSidebar()
       }
     } catch (_err) {
-      console.error('Save failed:', _err)
+      
     }
   }
 
@@ -110,7 +110,7 @@ function EditorContent() {
         reloadSidebar()
       }
     } catch (_err) {
-      console.error('Create note failed:', _err)
+      
     }
   }
 
@@ -151,28 +151,21 @@ function EditorContent() {
         await createNewNote()
       }
     } catch (_err) {
-      console.error('Delete note failed:', _err)
+      
     }
   }
 
   const handleBuild = async (selectedText: string) => {
-    console.log('🔧 Build triggered with text:', selectedText.substring(0, 50) + '...')
-    console.log('🔧 AI initialized:', aiInitialized)
-    console.log('🔧 Electron API available:', !!window.electronAPI?.ai)
-    
     if (!aiInitialized) return
     if (!selectedText.trim()) return
     if (!window.electronAPI?.ai) {
       alert('Electron API not available')
       return
     }
-    console.log('🔧 Setting isBuilding to true')
     setIsBuilding(true)
     setBuildStatus('Building...')
     try {
-      console.log('🔧 Calling AI processRequest...')
       const res = await window.electronAPI.ai.processRequest(selectedText)
-      console.log('🔧 AI response:', res)
       if (res.success) {
         if (res.workspaceResult && res.workspaceResult.changedFilesCount === 0) {
           setBuildStatus('No files were changed.')
@@ -182,12 +175,10 @@ function EditorContent() {
           setTimeout(() => setIsBuilding(false), 3000)
         }
       } else {
-        console.error('AI error:', res.error)
         alert('AI error: ' + res.error)
         setIsBuilding(false)
       }
     } catch (_err) {
-      console.error('Build error:', _err)
       alert('Build error: ' + _err)
       setIsBuilding(false)
     }
@@ -227,7 +218,6 @@ function EditorContent() {
     
     const handleAIReinitialized = () => {
       setAiInitialized(true)
-      console.log('🔧 AI state updated after reinitialization')
     }
     
     initAI()
@@ -258,7 +248,7 @@ function EditorContent() {
         setLastSavedContent(content)
         reloadSidebar()
       } catch (error) {
-        console.error('Failed to switch to new document:', error)
+        
       }
     } else if (action === 'delete') {
       try {
@@ -281,7 +271,6 @@ function EditorContent() {
           await createNewNote()
         }
       } catch (error) {
-        console.error('Failed to handle document deletion:', error)
         await createNewNote()
       }
     } else {
@@ -290,7 +279,7 @@ function EditorContent() {
   }
 
   return (
-    <div className="w-full h-screen max-h-screen flex bg-background">
+    <div className="w-full h-screen max-h-screen flex bg-background overflow-hidden">
       <NotesSidebar
         key={sidebarKey}
         currentNote={currentNote}
@@ -298,7 +287,7 @@ function EditorContent() {
         onCreateNote={createNewNote}
         onDeleteNote={handleDeleteNote}
       />
-      <SidebarInset className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      <SidebarInset className="flex flex-col flex-1 min-h-0 min-w-0 overflow-y-auto">
         <NoteEditorHeader
           createdAt={createdAt}
           isBuilding={isBuilding}
@@ -310,15 +299,15 @@ function EditorContent() {
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
       
-        <AgentChat 
+      <AgentChat 
         isOpen={isChatOpen}
-          onToggle={toggleChat} 
-          currentNote={currentNote ? {
-            ...currentNote,
-            content: getMarkdownContent()
-          } : undefined}
-          onApplyChanges={handleApplyChanges}
-        />
+        onToggle={toggleChat} 
+        currentNote={currentNote ? {
+          ...currentNote,
+          content: getMarkdownContent()
+        } : undefined}
+        onApplyChanges={handleApplyChanges}
+      />
     </div>
   )
 }
