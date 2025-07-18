@@ -2,6 +2,8 @@ const fs = require('fs')
 const { spawn } = require('child_process')
 const archiver = require('archiver')
 import { getNotesDir } from './note-service'
+import { db } from '../../lib/db'
+import { chats, messages, notesIndex, settings } from '../../lib/db/schema'
 
 export function exportWorkspace(zipPath: string) {
   return new Promise((resolve) => {
@@ -30,4 +32,22 @@ export function resetFeatures(repoUrl: string, onReload: () => void) {
       })
     })
   })
+}
+
+export async function clearDatabase() {
+  try {
+    await db.delete(messages)
+    await db.delete(chats)
+    await db.delete(notesIndex)
+    await db.delete(settings)
+    
+    const notesDir = getNotesDir()
+    if (fs.existsSync(notesDir)) {
+      fs.rmSync(notesDir, { recursive: true, force: true })
+    }
+    
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
 } 

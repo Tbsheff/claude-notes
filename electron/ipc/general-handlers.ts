@@ -19,4 +19,8 @@ export function setupGeneralHandlers(getMainWindow: () => any) {
     const mainWindow = getMainWindow()
     return generalService.resetFeatures(repoUrl, () => mainWindow?.reload())
   })
+
+  ipcMain.handle('general:clearDatabase', async () => {
+    return generalService.clearDatabase()
+  })
 } 

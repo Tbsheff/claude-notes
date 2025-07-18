@@ -1,6 +1,6 @@
-# AI Editor
+# Claude Notes
 
-AI-powered text editor built with React, Electron, and SQLite.
+AI-powered note-taking application with Claude Code integration built with React, Electron, and SQLite.
 
 ## Setup
 

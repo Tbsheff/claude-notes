@@ -1,7 +1,8 @@
 {
-  "name": "ai-notes",
+  "name": "claude-notes",
   "private": true,
   "version": "0.0.0",
+  "description": "AI-powered note-taking application with Claude integration",
   "main": "dist-electron/electron.js",
   "scripts": {
     "dev": "vite",

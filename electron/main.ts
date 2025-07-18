@@ -9,6 +9,7 @@ export function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
+    title: 'Claude Notes',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

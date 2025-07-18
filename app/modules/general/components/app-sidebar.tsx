@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2 } from 'lucide-react'
+import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2, Trash2 } from 'lucide-react'
 import { exportTextFile } from '../api'
 import {
   Sidebar,
@@ -42,6 +42,7 @@ export function NotesSidebar({
   const [loading, setLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
 
 
   useEffect(() => {
@@ -156,6 +157,27 @@ export function NotesSidebar({
       
     } finally {
       setIsResetting(false)
+    }
+  }
+
+  const handleClearDatabase = async () => {
+    if (!confirm('Are you sure you want to clear ALL data? This will delete all notes, chats, and settings. This action cannot be undone.')) {
+      return
+    }
+    
+    setIsClearing(true)
+    try {
+      const result = await generalApi.clearDatabase()
+      if (result.success) {
+        setNotes([])
+        alert('Database cleared successfully')
+      } else {
+        alert('Failed to clear database: ' + result.error)
+      }
+    } catch (error) {
+      alert('Failed to clear database')
+    } finally {
+      setIsClearing(false)
     }
   }
 
@@ -334,6 +356,21 @@ export function NotesSidebar({
                   <RotateCcw className="h-4 w-4" />
                 )}
                 Reset All Features
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearDatabase}
+                disabled={isClearing}
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                {isClearing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Clear All Data
               </Button>
             </div>
           </SidebarGroupContent>

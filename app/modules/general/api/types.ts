@@ -8,3 +8,8 @@ export interface ResetFeaturesResponse {
   success: boolean
   error?: string
 }
+
+export interface ClearDatabaseResponse {
+  success: boolean
+  error?: string
+}

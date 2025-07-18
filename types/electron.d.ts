@@ -40,6 +40,7 @@ export interface ElectronAPI {
   general: {
     exportWorkspace: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
     resetFeatures: (repoUrl: string) => Promise<{ success: boolean; error?: string }>;
+    clearDatabase: () => Promise<{ success: boolean; error?: string }>;
   };
   ipcRenderer: {
     on: (channel: string, listener: (event: any, ...args: any[]) => void) => void;

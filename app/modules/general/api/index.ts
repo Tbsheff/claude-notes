@@ -1,4 +1,4 @@
-import { ExportWorkspaceResponse, ResetFeaturesResponse } from './types'
+import { ExportWorkspaceResponse, ResetFeaturesResponse, ClearDatabaseResponse } from './types'
 
 export function exportTextFile(content: string, filename: string, type: 'markdown' | 'text' = 'text') {
   console.log('exportTextFile called:', { filename, type, contentLength: content.length })
@@ -41,6 +41,16 @@ export const generalApi = {
       return result
     } catch (error) {
       console.error('Failed to reset features:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  },
+
+  clearDatabase: async (): Promise<ClearDatabaseResponse> => {
+    try {
+      const result = await window.electronAPI.general.clearDatabase()
+      return result
+    } catch (error) {
+      console.error('Failed to clear database:', error)
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
