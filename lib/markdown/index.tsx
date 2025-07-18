@@ -121,4 +121,62 @@ export const markdownToHtml = (markdown: string): string => {
   if (inCode) htmlParts.push('</code></pre>')
 
   return htmlParts.join('')
-} 
+}
+
+import ReactMarkdown from 'react-markdown'
+import { Components } from 'react-markdown'
+
+const markdownComponents: Components = {
+  ul: ({ children }) => (
+    <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>
+  ),
+  li: ({ children }) => (
+    <li className="text-sm">{children}</li>
+  ),
+  p: ({ children }) => (
+    <p className="mb-2 last:mb-0">{children}</p>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em className="italic">{children}</em>
+  ),
+  code: ({ children, ...props }) => {
+    const inline = !props.className?.includes('language-')
+    return inline ? (
+      <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>
+    ) : (
+      <pre className="bg-muted p-3 rounded-lg overflow-x-auto my-2">
+        <code className="text-sm font-mono">{children}</code>
+      </pre>
+    )
+  },
+  h1: ({ children }) => (
+    <h1 className="text-lg font-semibold mb-2 mt-4 first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-sm font-semibold mb-1 mt-3 first:mt-0">{children}</h3>
+  ),
+}
+
+interface MarkdownRendererProps {
+  children: string
+  className?: string
+}
+
+export const MarkdownRenderer = ({ children, className = '' }: MarkdownRendererProps) => {
+  return (
+    <div className={className}>
+      <ReactMarkdown components={markdownComponents}>
+        {children}
+      </ReactMarkdown>
+    </div>
+  )
+}

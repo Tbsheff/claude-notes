@@ -63,13 +63,30 @@ export function processStreamParts(
 ): UnifiedMessage {
   let content = ''
   const toolCalls: Record<string, any> = {}
+  const blocks: MessageBlock[] = []
+  const toolCallOrder: string[] = []
+  
+  let currentTextContent = ''
+  let hasToolCalls = false
 
   for (const part of parts) {
     switch (part.type) {
       case 'text-delta':
+        currentTextContent += part.textDelta
         content += part.textDelta
         break
       case 'tool-call-streaming-start':
+        if (currentTextContent.trim()) {
+          blocks.push({
+            id: `text-block-${streamId}-${blocks.length}`,
+            type: 'text',
+            status: 'completed',
+            data: { text: currentTextContent.trim() }
+          })
+          currentTextContent = ''
+        }
+        hasToolCalls = true
+        toolCallOrder.push(part.toolCallId)
         toolCalls[part.toolCallId] = {
           toolCallId: part.toolCallId,
           toolName: part.toolName,
@@ -83,6 +100,9 @@ export function processStreamParts(
         }
         break
       case 'tool-call':
+        if (!toolCallOrder.includes(part.toolCallId)) {
+          toolCallOrder.push(part.toolCallId)
+        }
         toolCalls[part.toolCallId] = {
           toolCallId: part.toolCallId,
           toolName: part.toolName,
@@ -94,40 +114,69 @@ export function processStreamParts(
         if (toolCalls[part.toolCallId]) {
           toolCalls[part.toolCallId].state = 'output-available'
           toolCalls[part.toolCallId].output = part.result
+          
+          const statusMap: any = {
+            'input-streaming': 'executing',
+            'input-available': 'executing',
+            'output-available': 'completed'
+          }
+          const claudeCodeLogs = getClaudeCodeLogs(part.toolCallId)
+          blocks.push({
+            id: part.toolCallId,
+            type: 'tool',
+            status: statusMap[toolCalls[part.toolCallId].state] || 'executing',
+            data: {
+              toolName: toolCalls[part.toolCallId].toolName,
+              toolCallId: part.toolCallId,
+              args: toolCalls[part.toolCallId].input || toolCalls[part.toolCallId].rawInput,
+              result: toolCalls[part.toolCallId].output,
+              logs: [...claudeCodeLogs]
+            }
+          })
         }
         break
     }
   }
 
-  const blocks: MessageBlock[] = []
-  
-  if (content.trim()) {
-      blocks.push({
-          id: `text-block-${streamId}`,
-          type: 'text',
-          status: 'completed',
-          data: { text: content.trim() }
-      })
-  }
-  
-  for (const toolCall of Object.values(toolCalls)) {
-    const statusMap: any = {
-      'input-streaming': 'executing',
-      'input-available': 'executing',
-      'output-available': 'completed'
-    }
-    const claudeCodeLogs = getClaudeCodeLogs(toolCall.toolCallId)
-    blocks.push({
-      id: toolCall.toolCallId,
-      type: 'tool',
-      status: statusMap[toolCall.state] || 'executing',
-      data: {
-        toolName: toolCall.toolName,
-        toolCallId: toolCall.toolCallId,
-        args: toolCall.input || toolCall.rawInput,
-        result: toolCall.output,
-        logs: [...claudeCodeLogs]
+  for (const toolCallId of toolCallOrder) {
+    const toolCall = toolCalls[toolCallId]
+    if (toolCall && !blocks.find(b => b.id === toolCallId)) {
+      const statusMap: any = {
+        'input-streaming': 'executing',
+        'input-available': 'executing',
+        'output-available': 'completed'
       }
+      const claudeCodeLogs = getClaudeCodeLogs(toolCallId)
+      blocks.push({
+        id: toolCallId,
+        type: 'tool',
+        status: statusMap[toolCall.state] || 'executing',
+        data: {
+          toolName: toolCall.toolName,
+          toolCallId: toolCallId,
+          args: toolCall.input || toolCall.rawInput,
+          result: toolCall.output,
+          logs: [...claudeCodeLogs]
+        }
+      })
+    }
+  }
+
+  if (currentTextContent.trim()) {
+    blocks.push({
+      id: `text-block-${streamId}-${blocks.length}`,
+      type: 'text',
+      status: 'completed',
+      data: { text: currentTextContent.trim() }
+    })
+  }
+
+  if (blocks.length === 0 && content.trim()) {
+    blocks.push({
+      id: `text-block-${streamId}`,
+      type: 'text',
+      status: 'completed',
+      data: { text: content.trim() }
     })
   }
 

@@ -5,14 +5,16 @@ import { createNote, deleteNote } from '../../../electron/services/note-service'
 
 export function createDocumentEditorTool(context: { noteId: string, noteContent: string }) {
   return tool({
-    description: 'Preview document editing actions (create, edit, delete). Actions will only be executed when user clicks Apply. For current document editing use append/replace/insert. For new documents use create. For deleting use delete.',
+    description: 'Preview document editing actions (create, edit, delete). Actions will only be executed when user clicks Apply. For current document editing use append/replace/prepend/find_and_replace. For new documents use create. For deleting use delete.',
     parameters: z.object({
-      action: z.enum(['append', 'replace', 'insert', 'prepend', 'create', 'delete']).describe('Type of document action'),
+      action: z.enum(['append', 'replace', 'prepend', 'create', 'delete', 'find_and_replace']).describe('Type of document action'),
       text: z.string().optional().describe('The text to add/replace/create in the document'),
       title: z.string().optional().describe('Title for new document (used with create action)'),
-      position: z.number().optional().describe('Position to insert text (for insert action)')
+
+      find: z.string().optional().describe('Text to find (for find_and_replace action)'),
+      replace: z.string().optional().describe('Text to replace with (for find_and_replace action)')
     }),
-    execute: async ({ action, text, title, position }) => {
+    execute: async ({ action, text, title, find, replace }) => {
       const { noteId, noteContent } = context
       
       try {
@@ -54,12 +56,18 @@ export function createDocumentEditorTool(context: { noteId: string, noteContent:
           case 'prepend':
             newContent = (text || '') + oldContent
             break
-          case 'insert':
-            if (position !== undefined) {
-              newContent = oldContent.slice(0, position) + (text || '') + oldContent.slice(position)
-            } else {
-              newContent = oldContent + (text || '')
+
+          case 'find_and_replace':
+            if (!find) {
+              return { success: false, error: 'find parameter is required for find_and_replace action' }
             }
+            if (!replace) {
+              return { success: false, error: 'replace parameter is required for find_and_replace action' }
+            }
+            if (!oldContent.includes(find)) {
+              return { success: false, error: `Text "${find}" not found in document` }
+            }
+            newContent = oldContent.replace(find, replace)
             break
           default:
             newContent = oldContent + (text || '')

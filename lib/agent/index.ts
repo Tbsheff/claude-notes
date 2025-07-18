@@ -2,6 +2,7 @@ import { streamText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createClaudeCodeTool } from '../tools/claude-code'
 import { createDocumentEditorTool } from '../tools/document-editor'
+import { AgentPrompt } from './prompt'
 
 export function createAgentStream(messages: any[], options: { noteId?: string, noteContent?: string, mainWindow?: any } = {}) {
   const tools: any = {
@@ -12,12 +13,20 @@ export function createAgentStream(messages: any[], options: { noteId?: string, n
     })
   }
 
+  const filteredMessages = messages.filter(msg => 
+    msg && msg.content && msg.content.trim() !== ''
+  )
+
   return streamText({
     model: anthropic('claude-3-5-sonnet-20241022'),
-    messages,
+    system: AgentPrompt,
+    messages: filteredMessages,
     toolCallStreaming: true,
     tools,
-    onError: (error) => {},
+    maxSteps: 15,
+    onError: (error) => {
+      console.error('Agent error:', error)
+    },
     ...options
   })
 }

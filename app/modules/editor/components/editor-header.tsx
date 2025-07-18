@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { BuildStatusBadge } from '@/components/ui/build-status-badge'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Download } from 'lucide-react'
 import { SettingsDialog } from './editor-settings-dialog'
 
 interface NoteEditorHeaderProps {
@@ -68,7 +68,7 @@ export function NoteEditorHeader({ isBuilding, buildStatus, content, onToggleCha
           onClick={handleExport}
           className="flex items-center"
         >
-          Export
+          <Download className="h-4 w-4" />
         </Button>
         
         <Button
