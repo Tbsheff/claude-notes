@@ -24,7 +24,7 @@ ALLOWED BASH COMMANDS (you can ONLY use these):
 - pwd, ls, ls .
 
 IMPORTANT: 
-- Use ONLY npm commands (NOT pnpm)
+- Use ONLY npm commands
 - Dependencies are already installed - DO NOT run npm install/npm ci
 - For validation, use: npm run build
 
@@ -108,11 +108,11 @@ Best Practices:
 VALIDATION WORKFLOW (CRITICAL):
 After making ANY code changes, you MUST validate your work:
 
-1. Run: pnpm run build
+1. Run: npm run build
 2. If build fails with errors:
    - Read the error messages carefully
    - Fix the specific issues mentioned
-   - Run pnpm run build again
+   - Run npm run build again
    - Repeat until build succeeds
 3. Only after successful build, consider the task complete
 
@@ -231,7 +231,7 @@ NEVER put feature logic directly in components - always use render methods!
 – Only successfully validated files are applied to repository
 – Files are copied to isolated workspace, modified, validated, then applied
 – If validation fails, changes are discarded and not applied 
-– Uses pnpm for dependency management and builds
+– Uses npm for dependency management and builds
 `
 
 export function createWorkspacePrompt(workspacePath: string): string {

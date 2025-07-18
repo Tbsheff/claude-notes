@@ -1,5 +1,6 @@
 import { UnifiedMessage, MessageBlock } from './types'
 import { MutableRefObject, Dispatch, SetStateAction } from 'react'
+import { getErrorMessage } from './error-handler'
 
 const toolCallLogs: Record<string, any[]> = {}
 
@@ -38,7 +39,11 @@ export function getClaudeCodeStatus(toolCallId: string, featureName?: string): s
     'Rebuild completed': 'Completed',
     'Rebuild failed': 'Failed',
     'Rebuild error': 'Error',
-    'Agent ready': 'Completed'
+    'Agent ready': 'Completed',
+    'Build failed': 'Failed',
+    'Validation failed': 'Failed',
+    'Starting build check': 'Building...',
+    'Build completed successfully': 'Completed'
   }
   
   let status = 'Building...'
@@ -134,6 +139,30 @@ export function processStreamParts(
             }
           })
         }
+        break
+      case 'error':
+        if (currentTextContent.trim()) {
+          blocks.push({
+            id: `text-block-${streamId}-${blocks.length}`,
+            type: 'text',
+            status: 'completed',
+            data: { text: currentTextContent.trim() }
+          })
+          currentTextContent = ''
+        }
+        
+        const rawError = typeof part.error === 'string' ? part.error : JSON.stringify(part.error)
+        const friendlyMessage = getErrorMessage(part.error)
+        
+        blocks.push({
+          id: `error-block-${streamId}-${blocks.length}`,
+          type: 'error',
+          status: 'error',
+          data: { 
+            error: rawError,
+            message: friendlyMessage
+          }
+        })
         break
     }
   }

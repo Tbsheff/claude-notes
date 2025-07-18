@@ -9,7 +9,7 @@ export interface UnifiedMessage {
 
 export interface MessageBlock {
   id: string
-  type: 'text' | 'tool' | 'thinking'
+  type: 'text' | 'tool' | 'thinking' | 'error'
   data: any
   status: 'pending' | 'executing' | 'completed' | 'error'
 }
@@ -43,6 +43,14 @@ export interface ThinkingBlock extends MessageBlock {
   type: 'thinking'
   data: {
     text: string
+  }
+}
+
+export interface ErrorBlock extends MessageBlock {
+  type: 'error'
+  data: {
+    error: string
+    message?: string
   }
 }
 

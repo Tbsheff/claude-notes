@@ -2,9 +2,9 @@ import React, { memo, useMemo, useCallback } from 'react'
 import { SparklesIcon, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { MarkdownRenderer } from '@/lib/markdown'
 import { ChatMessageProps } from '../api/types'
-import { CollapsibleTool } from './tools/collapsible-tool'
-import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
+import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock, ErrorBlock } from '@/lib/agent/types'
 import { Note } from '@/app/modules/editor/api/types'
 import { getToolComponent } from '@/lib/agent/tool-registry'
 import './tools/claude-code-tool-view'
@@ -22,7 +22,7 @@ const renderTextBlock = (block: TextBlock, isUser: boolean) => {
   
   return (
     <div className="text-sm break-words text-foreground max-w-lg md:max-w-2xl">
-      {block.data.text}
+      <MarkdownRenderer>{block.data.text}</MarkdownRenderer>
     </div>
   )
 }
@@ -57,11 +57,6 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
   
   return (
     <div className="w-full">
-      <CollapsibleTool 
-        title={getTitle()}
-        icon={getIcon()}
-        dataTestId={isExecuting ? `${toolName}-executing` : `${toolName}-completed`}
-      >
         <div className="space-y-1 text-sm">
           {args && (
             <div className="text-muted-foreground font-medium">
@@ -92,15 +87,22 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
             </div>
           )}
         </div>
-      </CollapsibleTool>
     </div>
   )
 }
 
 const renderThinkingBlock = (block: ThinkingBlock) => {
   return (
-    <div className="p-3 rounded-2xl text-sm bg-muted text-muted-foreground">
+    <div className="text-sm text-muted-foreground">
       {block.data.text}
+    </div>
+  )
+}
+
+const renderErrorBlock = (block: ErrorBlock) => {
+  return (
+    <div className="text-sm break-words text-foreground max-w-lg md:max-w-2xl">
+      <MarkdownRenderer>{block.data.message || block.data.error}</MarkdownRenderer>
     </div>
   )
 }
@@ -132,6 +134,8 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, current
         )
       } else if (block.type === 'thinking') {
         elements.push(<div key={key}>{renderThinkingBlock(block as ThinkingBlock)}</div>)
+      } else if (block.type === 'error') {
+        elements.push(<div key={key}>{renderErrorBlock(block as ErrorBlock)}</div>)
       }
     })
  
@@ -174,7 +178,7 @@ export const ThinkingMessage = memo(() => {
     >
       <div className="flex gap-4 w-full justify-start mb-4">
         <div className="flex flex-col gap-2 max-w-[75%]">
-          <div className="p-3 rounded-2xl text-sm bg-muted text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Thinking...
           </div>
         </div>

@@ -3,6 +3,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { createClaudeCodeTool } from '../tools/claude-code'
 import { createDocumentEditorTool } from '../tools/document-editor'
 import { AgentPrompt } from './prompt'
+import { getErrorMessage } from './error-handler'
 
 export function createAgentStream(messages: any[], options: { noteId?: string, noteContent?: string, mainWindow?: any } = {}) {
   const tools: any = {
@@ -26,6 +27,14 @@ export function createAgentStream(messages: any[], options: { noteId?: string, n
     maxSteps: 15,
     onError: (error) => {
       console.error('Agent error:', error)
+      if (options.mainWindow) {
+        const friendlyMessage = getErrorMessage(error)
+        options.mainWindow.webContents.send('ai-stream-error', { 
+          error: error instanceof Error ? error.message : String(error),
+          friendlyMessage,
+          timestamp: new Date().toISOString()
+        })
+      }
     },
     ...options
   })

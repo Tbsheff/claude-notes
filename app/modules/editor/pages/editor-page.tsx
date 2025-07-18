@@ -1,31 +1,42 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { NoteEditorHeader } from '../components/editor-header'
 import { NoteEditorFooter } from '../components/editor-footer'
 import { NotesSidebar } from '../../general/components/app-sidebar'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Editor } from '../components/editor'
-import { editorApi } from '../api'
 import { Note } from '@/app/modules/editor/api'
-import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { markdownToHtml } from '@/lib/markdown'
 import { AgentChat } from '@/app/modules/agent/components/agent-chat'
-import { cn } from '@/lib/utils'
+import { useNoteManager } from '@/hooks/use-note-manager'
+import { useDocumentSync } from '@/hooks/use-document-sync'
 
 function EditorContent() {
-  const [content, setContent] = useState('')
   const [isBuilding, setIsBuilding] = useState(false)
   const [buildStatus, setBuildStatus] = useState('Building...')
   const [aiInitialized, setAiInitialized] = useState(false)
-  const [currentNote, setCurrentNote] = useState<Note | null>(null)
   const [createdAt] = useState(new Date())
-  const [lastSavedContent, setLastSavedContent] = useState('')
   const [sidebarKey, setSidebarKey] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState(false)
+
+  const {
+    content,
+    setContent,
+    currentNote,
+    lastSavedContent,
+    getMarkdownContent,
+    saveCurrentNote,
+    createNewNote,
+    handleNoteSelect,
+    handleDeleteNote,
+    loadInitialNote
+  } = useNoteManager()
+
+  useDocumentSync({ setContent })
 
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
   const toggleChat = () => setIsChatOpen(!isChatOpen)
 
   const getPlainTextContent = () => (content || '').replace(/<[^>]+>/g, ' ').trim()
-  const getMarkdownContent = useCallback(() => htmlToMarkdown(content), [content]);
   
   useEffect(() => {
     if (!window.electronAPI) return
@@ -77,82 +88,19 @@ function EditorContent() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [toggleChat])
 
-  const saveCurrentNote = async () => {
-    if (!currentNote) return
-    const markdownContent = getMarkdownContent()
-    if (!markdownContent.trim() || markdownContent === lastSavedContent) return
-
-    try {
-      const result = await editorApi.saveNote({
-        noteId: currentNote.id,
-        content: markdownContent,
-        title: currentNote.title,
-      })
-      if (result.success && result.data) {
-        setCurrentNote(result.data)
-        setLastSavedContent(markdownContent)
-        reloadSidebar()
-      }
-    } catch (_err) {
-      
-    }
+  const handleNoteSelectWithReload = async (note: Note) => {
+    await handleNoteSelect(note)
+    reloadSidebar()
   }
 
-  const createNewNote = async () => {
-    const markdownContent = getMarkdownContent()
-    if (currentNote && markdownContent !== lastSavedContent) await saveCurrentNote()
-    try {
-      const res = await editorApi.createNote({ title: 'New Note', content: '' })
-      if (res.success && res.data) {
-        setCurrentNote(res.data)
-        setContent('')
-        setLastSavedContent('')
-        reloadSidebar()
-      }
-    } catch (_err) {
-      
-    }
+  const handleDeleteNoteWithReload = async (id: string) => {
+    await handleDeleteNote(id)
+    reloadSidebar()
   }
 
-  const handleNoteSelect = async (note: Note) => {
-    const markdownContent = getMarkdownContent()
-    if (currentNote && markdownContent !== lastSavedContent) await saveCurrentNote()
-    try {
-      const res = await editorApi.loadNote(note.id)
-      if (res.success && res.data) {
-        setCurrentNote(res.data)
-        setContent(markdownToHtml(res.data.content || ''))
-        setLastSavedContent(res.data.content || '')
-      } else {
-        setCurrentNote(note)
-        setContent(markdownToHtml(note.content || ''))
-        setLastSavedContent(note.content || '')
-      }
-    } catch (_err) {
-      setCurrentNote(note)
-      setContent(markdownToHtml(note.content || ''))
-      setLastSavedContent(note.content || '')
-    }
-  }
-
-  const handleDeleteNote = async (id: string) => {
-    try {
-      const res = await editorApi.deleteNote(id)
-      if (!res.success) return
-      reloadSidebar()
-      if (currentNote?.id !== id) return
-      const list = await editorApi.listNotes()
-      if (list.success && list.data && list.data.length) {
-        const next = list.data[0]
-        setCurrentNote(next)
-        setContent(markdownToHtml(next.content))
-        setLastSavedContent(next.content)
-      } else {
-        await createNewNote()
-      }
-    } catch (_err) {
-      
-    }
+  const createNewNoteWithReload = async () => {
+    await createNewNote()
+    reloadSidebar()
   }
 
   const handleBuild = async (selectedText: string) => {
@@ -190,38 +138,13 @@ function EditorContent() {
       const res = await window.electronAPI.ai.initialize({})
       if (res.success) setAiInitialized(true)
     }
-    const loadInitial = async () => {
-      const res = await editorApi.listNotes()
-      if (res.success && res.data && res.data.length) {
-        const first = res.data[0]
-        
-        try {
-          const noteRes = await editorApi.loadNote(first.id)
-          if (noteRes.success && noteRes.data) {
-            setCurrentNote(noteRes.data)
-            setContent(markdownToHtml(noteRes.data.content || ''))
-            setLastSavedContent(noteRes.data.content || '')
-          } else {
-            setCurrentNote(first)
-            setContent(markdownToHtml(first.content || ''))
-            setLastSavedContent(first.content || '')
-          }
-        } catch (err) {
-          setCurrentNote(first)
-          setContent(markdownToHtml(first.content || ''))
-          setLastSavedContent(first.content || '')
-        }
-      } else {
-        await createNewNote()
-      }
-    }
     
     const handleAIReinitialized = () => {
       setAiInitialized(true)
     }
     
     initAI()
-    loadInitial()
+    loadInitialNote().catch(console.error)
     
     window.addEventListener('ai-reinitialized', handleAIReinitialized)
     
@@ -230,51 +153,27 @@ function EditorContent() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!currentNote) return
-    const md = getMarkdownContent()
-    if (md === lastSavedContent) return
-    const t = setTimeout(saveCurrentNote, 1500)
-    return () => clearTimeout(t)
-  }, [content, currentNote, lastSavedContent, getMarkdownContent])
-
   const handleApplyChanges = async (data: { action: string; content: string; newNote?: Note }) => {
-    const { action, content, newNote } = data
+    const { action, content: newContent, newNote } = data
     
     if (action === 'create' && newNote) {
       try {
-        setCurrentNote(newNote)
-        setContent(markdownToHtml(content))
-        setLastSavedContent(content)
+        await handleNoteSelect(newNote)
         reloadSidebar()
       } catch (error) {
-        
+        console.error('Failed to apply create changes:', error)
+      }
+    } else if (action === 'select' && newNote) {
+      try {
+        await handleNoteSelect(newNote)
+        reloadSidebar()
+      } catch (error) {
+        console.error('Failed to select note:', error)
       }
     } else if (action === 'delete') {
-      try {
-        reloadSidebar()
-        
-        const list = await editorApi.listNotes()
-        if (list.success && list.data && list.data.length > 0) {
-          const nextNote = list.data[0]
-          const res = await editorApi.loadNote(nextNote.id)
-          if (res.success && res.data) {
-            setCurrentNote(res.data)
-            setContent(markdownToHtml(res.data.content || ''))
-            setLastSavedContent(res.data.content || '')
-          } else {
-            setCurrentNote(nextNote)
-            setContent(markdownToHtml(nextNote.content || ''))
-            setLastSavedContent(nextNote.content || '')
-          }
-        } else {
-          await createNewNote()
-        }
-      } catch (error) {
-        await createNewNote()
-      }
+      reloadSidebar()
     } else {
-      setContent(markdownToHtml(content))
+      setContent(markdownToHtml(newContent))
     }
   }
 
@@ -283,19 +182,17 @@ function EditorContent() {
       <NotesSidebar
         key={sidebarKey}
         currentNote={currentNote}
-        onNoteSelect={handleNoteSelect}
-        onCreateNote={createNewNote}
-        onDeleteNote={handleDeleteNote}
+        onNoteSelect={handleNoteSelectWithReload}
+        onCreateNote={createNewNoteWithReload}
+        onDeleteNote={handleDeleteNoteWithReload}
       />
       <SidebarInset className="flex flex-col flex-1 min-h-0 min-w-0 overflow-y-auto">
         <NoteEditorHeader
           createdAt={createdAt}
-          isBuilding={isBuilding}
-          buildStatus={buildStatus}
           content={getMarkdownContent()}
           onToggleChat={toggleChat}
         />
-        <Editor value={content} onChange={setContent} onBuild={handleBuild} />
+        <Editor value={content} onChange={setContent} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>
       

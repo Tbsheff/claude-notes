@@ -1,10 +1,8 @@
 
-import { Settings, Moon, Sun, MoreHorizontal, Key, AlertCircle, Trash2 } from 'lucide-react'
+import { Settings, Moon, Sun, MoreHorizontal, Key, AlertCircle, Trash2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Dialog,
   DialogContent,
@@ -27,6 +25,7 @@ export function SettingsDialog() {
   const [isLoading, setIsLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [isOpen, setIsOpen] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -122,13 +121,11 @@ export function SettingsDialog() {
     }
   }
 
-  const isAnthropicRequired = !apiKeys.anthropicApiKey
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <MoreHorizontal className="h-4 w-4" />
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
@@ -140,7 +137,6 @@ export function SettingsDialog() {
         </DialogHeader>
         
         <div className="space-y-6">
-          {/* API Keys Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">
               API Keys
@@ -156,16 +152,31 @@ export function SettingsDialog() {
                   </a>
                 </div>
                 <div className="flex gap-2 items-center mt-3">
-                  <Input
-                    ref={inputRef}
-                    type="password"
-                    placeholder="sk-ant-..."
-                    value={apiKeys.anthropicApiKey || ''}
-                    onChange={(e) => handleApiKeyChange('anthropicApiKey', e.target.value)}
-                    className="flex-1"
-                    autoFocus={false}
-                    tabIndex={-1}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      ref={inputRef}
+                      type={showApiKey ? "text" : "password"}
+                      placeholder="sk-ant-..."
+                      value={apiKeys.anthropicApiKey || ''}
+                      onChange={(e) => handleApiKeyChange('anthropicApiKey', e.target.value)}
+                      className="pr-10"
+                      autoFocus={false}
+                      tabIndex={-1}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                    >
+                      {showApiKey ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                   <Button 
                     onClick={saveSettings} 
                     disabled={isLoading}
@@ -188,7 +199,6 @@ export function SettingsDialog() {
             </div>
           </div>
 
-          {/* Appearance Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">Appearance</h3>
             <div className="flex items-center justify-between space-x-4 p-4 rounded-lg border bg-muted/50">
@@ -205,7 +215,6 @@ export function SettingsDialog() {
             </div>
           </div>
           
-          {/* Features Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium mb-4">Features</h3>
             <div className="flex flex-col gap-4">
@@ -224,7 +233,6 @@ export function SettingsDialog() {
             </div>
           </div>
 
-          {/* Shortcuts Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium mb-2">Shortcuts</h3>
             <ul className="space-y-2">

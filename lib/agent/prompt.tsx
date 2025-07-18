@@ -10,6 +10,10 @@ When user requests ANY code changes in the application (new features, UI changes
 - Fixing bugs or improving code
 - Refactoring or optimizing code
 
+**IMPORTANT**: 
+- NEVER restart or re-run the Claude Code tool unless the user explicitly asks you to do so. If the tool fails, show the error and wait for user instructions.
+- When Claude Code tool returns SUCCESS, immediately tell the user: "Please wait ~10 seconds while the changes are being applied to your project. You'll see the updates shortly."
+
 ### Document Editing (Document Editor Tool)
 Use the document editor for text document changes:
 

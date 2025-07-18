@@ -53,6 +53,9 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
   onUpdateBlock?: (block: ToolBlock) => void
 }) {
   const { result, args } = block.data
+  if (!result && !args) {
+    return null
+  }
   const isExecuting = block.status === 'executing'
   const [isApplying, setIsApplying] = useState(false)
   const isApplied = result?.isApplied || false
@@ -182,19 +185,20 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
     }
     
     const action = result?.action || parsedArgs?.action
-    if (action === 'create') {
-      return result?.title || parsedArgs?.title
+    
+    const argsString = typeof args === 'string' ? args : JSON.stringify(args)
+    const isCreateAction = (action === 'create') || argsString.toLowerCase().includes('create')
+    
+    if (isCreateAction) {
+      return result?.title || parsedArgs?.title || null
     }
+    
     return currentNote?.title
   }
 
-  const actualTitle = getActualTitle()
+  const actualTitle = getActualTitle() || 'New Document'
   
   if (isExecuting) {
-    if (!actualTitle) {
-      return null
-    }
-    
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-md p-2 max-w-md border border-border/50">
         <Loader2 className="h-3 w-3 animate-spin" />
@@ -205,10 +209,6 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
   }
 
   if (result?.success) {
-    if (!actualTitle) {
-      return null
-    }
-    
     const action = result.action
     const stats = action === 'create' ? 
       { added: result.newContent?.length || 0, removed: 0 } :
@@ -235,10 +235,18 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
             <FileText 
               className="h-3 w-3 flex-shrink-0 cursor-pointer" 
               onClick={() => {
-                if (result?.newNote?.id) {
-                  window.electronAPI.notes.load(result.newNote.id)
-                } else if (currentNote?.id) {
-                  window.electronAPI.notes.load(currentNote.id)
+                if (result?.newNote) {
+                  onApplyChanges?.({
+                    action: 'select',
+                    content: result.newNote.content || '',
+                    newNote: result.newNote
+                  })
+                } else if (currentNote) {
+                  onApplyChanges?.({
+                    action: 'select',
+                    content: currentNote.content || '',
+                    newNote: currentNote
+                  })
                 }
               }}
             />

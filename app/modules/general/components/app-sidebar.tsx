@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2 } from 'lucide-react'
+import { exportTextFile } from '../api'
 import {
   Sidebar,
   SidebarContent,
@@ -41,8 +42,7 @@ export function NotesSidebar({
   const [loading, setLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
+
 
   useEffect(() => {
     loadNotes()
@@ -62,6 +62,37 @@ export function NotesSidebar({
     }
   }
 
+  const groupNotesByDate = (notes: Note[]) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+    const thisWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000))
+
+    const groups = {
+      today: [] as Note[],
+      yesterday: [] as Note[],
+      thisWeek: [] as Note[],
+      older: [] as Note[]
+    }
+
+    notes.forEach(note => {
+      const noteDate = new Date(note.updatedAt || note.createdAt)
+      const noteDay = new Date(noteDate.getFullYear(), noteDate.getMonth(), noteDate.getDate())
+
+      if (noteDay.getTime() === today.getTime()) {
+        groups.today.push(note)
+      } else if (noteDay.getTime() === yesterday.getTime()) {
+        groups.yesterday.push(note)
+      } else if (noteDay.getTime() >= thisWeekStart.getTime()) {
+        groups.thisWeek.push(note)
+      } else {
+        groups.older.push(note)
+      }
+    })
+
+    return groups
+  }
+
   const handleDeleteNote = async (noteId: string) => {
     if (confirm('Are you sure you want to delete this note?')) {
       try {
@@ -73,42 +104,19 @@ export function NotesSidebar({
     }
   }
 
-  const handleStartRename = (note: Note) => {
-    setEditingNoteId(note.id)
-    setEditingTitle(note.title)
-  }
 
-  const handleSaveRename = async (noteId: string) => {
-    try {
-      const note = notes.find(n => n.id === noteId)
-      if (note) {
-        const result = await editorApi.saveNote({
-          noteId,
-          content: note.content,
-          title: editingTitle
-        })
-        
-        if (result.success) {
-          setNotes(notes.map(n => 
-            n.id === noteId ? { ...n, title: editingTitle } : n
-          ))
-        }
-      }
-    } catch (error) {
-      
-    } finally {
-      setEditingNoteId(null)
-      setEditingTitle('')
-    }
-  }
-
-  const handleCancelRename = () => {
-    setEditingNoteId(null)
-    setEditingTitle('')
-  }
 
   const handleExportNote = async (note: Note) => {
-    
+    try {
+      console.log('Exporting note:', note.title, 'Content length:', note.content?.length || 0)
+      if (!note.content || !note.content.trim()) {
+        alert('This note has no content to export')
+        return
+      }
+      exportTextFile(note.content, note.title, 'markdown')
+    } catch (error) {
+      console.error('Export failed:', error)
+    }
   }
 
   const handleCreateNote = async () => {
@@ -151,95 +159,149 @@ export function NotesSidebar({
     }
   }
 
+  const renderNoteGroup = (groupNotes: Note[]) => (
+    <SidebarMenu>
+      {groupNotes.map((note) => (
+        <SidebarMenuItem key={note.id} className="cursor-pointer">
+          <SidebarMenuButton
+            isActive={currentNote?.id === note.id}
+            onClick={() => onNoteSelect(note)}
+          >
+            <FileText className="h-4 w-4" />
+            <div className="flex-1 min-w-0">
+              <div className="truncate font-medium">
+                {note.title}
+              </div>
+            </div>
+          </SidebarMenuButton>
+          <SidebarMenuAction showOnHover>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center justify-center w-full h-full cursor-pointer">
+                  <MoreHorizontal className="h-4 w-4" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleExportNote(note)
+                  }}
+                >
+                  Export
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteNote(note.id)
+                  }}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuAction>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  )
+
+  const groupedNotes = groupNotesByDate(notes)
+
   return (
     <Sidebar collapsible="offcanvas" className="border-r">
       <SidebarContent className="flex flex-col h-full">
-        <SidebarGroup className="flex-1">
-          <SidebarGroupLabel>Recent Notes</SidebarGroupLabel>
-          <SidebarGroupAction onClick={handleCreateNote}>
-            <Plus className="h-4 w-4" />
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <SidebarMenuItem key={i}>
-                    <SidebarMenuSkeleton showIcon />
+        <div className="flex-1">
+          {loading ? (
+            <SidebarGroup>
+              <SidebarGroupLabel>Recent Notes</SidebarGroupLabel>
+              <SidebarGroupAction onClick={handleCreateNote}>
+                <Plus className="h-4 w-4" />
+              </SidebarGroupAction>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <SidebarMenuItem key={i}>
+                      <SidebarMenuSkeleton showIcon />
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : notes.length === 0 ? (
+            <SidebarGroup>
+              <SidebarGroupLabel>Recent Notes</SidebarGroupLabel>
+              <SidebarGroupAction onClick={handleCreateNote}>
+                <Plus className="h-4 w-4" />
+              </SidebarGroupAction>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No notes yet
+                    </div>
                   </SidebarMenuItem>
-                ))
-              ) : notes.length === 0 ? (
-                <SidebarMenuItem>
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    No notes yet
-                  </div>
-                </SidebarMenuItem>
-              ) : (
-                notes.map((note) => (
-                  <SidebarMenuItem key={note.id} className="cursor-pointer">
-                    <SidebarMenuButton
-                      isActive={currentNote?.id === note.id}
-                      onClick={() => onNoteSelect(note)}
-                    >
-                      <FileText className="h-4 w-4" />
-                      <div className="flex-1 min-w-0">
-                        {editingNoteId === note.id ? (
-                          <input
-                            type="text"
-                            value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
-                            onBlur={() => handleSaveRename(note.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleSaveRename(note.id)
-                              } else if (e.key === 'Escape') {
-                                handleCancelRename()
-                              }
-                            }}
-                            className="bg-transparent border-none outline-none w-full font-medium"
-                            autoFocus
-                          />
-                        ) : (
-                          <div 
-                            className="truncate font-medium"
-                            onDoubleClick={() => handleStartRename(note)}
-                          >
-                            {note.title}
-                          </div>
-                        )}
-                      </div>
-                    </SidebarMenuButton>
-                    <SidebarMenuAction showOnHover>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="flex items-center justify-center w-full h-full cursor-pointer">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleStartRename(note)}
-                          >
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleExportNote(note)}
-                          >
-                            Export
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteNote(note.id)}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </SidebarMenuAction>
-                  </SidebarMenuItem>
-                ))
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : (
+            <>
+              {groupedNotes.today.length > 0 && (
+                <SidebarGroup>
+                  <SidebarGroupLabel>Today</SidebarGroupLabel>
+                  <SidebarGroupAction onClick={handleCreateNote}>
+                    <Plus className="h-4 w-4" />
+                  </SidebarGroupAction>
+                  <SidebarGroupContent>
+                    {renderNoteGroup(groupedNotes.today)}
+                  </SidebarGroupContent>
+                </SidebarGroup>
               )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              
+              {groupedNotes.yesterday.length > 0 && (
+                <SidebarGroup>
+                  <SidebarGroupLabel>Yesterday</SidebarGroupLabel>
+                  {groupedNotes.today.length === 0 && (
+                    <SidebarGroupAction onClick={handleCreateNote}>
+                      <Plus className="h-4 w-4" />
+                    </SidebarGroupAction>
+                  )}
+                  <SidebarGroupContent>
+                    {renderNoteGroup(groupedNotes.yesterday)}
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
+              
+              {groupedNotes.thisWeek.length > 0 && (
+                <SidebarGroup>
+                  <SidebarGroupLabel>This Week</SidebarGroupLabel>
+                  {groupedNotes.today.length === 0 && groupedNotes.yesterday.length === 0 && (
+                    <SidebarGroupAction onClick={handleCreateNote}>
+                      <Plus className="h-4 w-4" />
+                    </SidebarGroupAction>
+                  )}
+                  <SidebarGroupContent>
+                    {renderNoteGroup(groupedNotes.thisWeek)}
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
+              
+              {groupedNotes.older.length > 0 && (
+                <SidebarGroup>
+                  <SidebarGroupLabel>Older</SidebarGroupLabel>
+                  {groupedNotes.today.length === 0 && groupedNotes.yesterday.length === 0 && groupedNotes.thisWeek.length === 0 && (
+                    <SidebarGroupAction onClick={handleCreateNote}>
+                      <Plus className="h-4 w-4" />
+                    </SidebarGroupAction>
+                  )}
+                  <SidebarGroupContent>
+                    {renderNoteGroup(groupedNotes.older)}
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
+            </>
+          )}
+        </div>
         
         <SidebarGroup>
           <SidebarGroupContent>

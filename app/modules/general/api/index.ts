@@ -1,5 +1,29 @@
 import { ExportWorkspaceResponse, ResetFeaturesResponse } from './types'
 
+export function exportTextFile(content: string, filename: string, type: 'markdown' | 'text' = 'text') {
+  console.log('exportTextFile called:', { filename, type, contentLength: content.length })
+  
+  if (!content.trim()) {
+    alert('No content to export')
+    return
+  }
+  
+  const mimeType = type === 'markdown' ? 'text/markdown' : 'text/plain'
+  const extension = type === 'markdown' ? '.md' : '.txt'
+  
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename.endsWith(extension) ? filename : `${filename}${extension}`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  
+  console.log('File exported successfully:', a.download)
+}
+
 export const generalApi = {
   exportWorkspace: async (): Promise<ExportWorkspaceResponse> => {
     try {

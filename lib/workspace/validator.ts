@@ -22,7 +22,11 @@ export class Validator {
     }
 
     try {
+      console.log('=== VALIDATOR START ===')
+      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
+      
       const buildResult = await this.checkBuild()
+      console.log('Build result:', buildResult)
 
       result.tsCheck = true
       result.eslintCheck = true
@@ -30,13 +34,22 @@ export class Validator {
       result.success = result.buildCheck
 
       if (!result.success) {
+        console.log('Validation failed:', buildResult.error)
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validation failed', icon: '!' })
         result.error = `Build: ${buildResult.error}`
+      } else {
+        console.log('Validation passed')
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validation passed', icon: '○' })
       }
     } catch (error) {
+      console.log('Validation error:', error)
+      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validation error', icon: '!' })
       result.success = false
       result.error = error instanceof Error ? error.message : String(error)
     }
 
+    console.log('=== VALIDATOR END ===', result)
     return result
   }
 
@@ -69,15 +82,22 @@ export class Validator {
 
   private async checkBuild(): Promise<{success: boolean, error?: string}> {
     try {
+      console.log('Starting build check...')
       const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
       ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Compiling project...', icon: '●' })
       
+      console.log('Running npm run build...')
       await execAsync('npm run build', {
         cwd: this.projectRoot,
         timeout: this.timeoutMs
       })
+      console.log('Build completed successfully')
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Build completed successfully', icon: '○' })
       return { success: true }
     } catch (error) {
+      console.log('Build failed:', error)
+      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
+      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Build failed', icon: '!' })
       const errorMsg = error instanceof Error ? error.message : String(error)
       return { success: false, error: errorMsg }
     }

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+const { ipcMain } = require('electron')
 import * as aiService from '../services/ai-service'
 
 export const getChangedFiles = aiService.getChangedFiles

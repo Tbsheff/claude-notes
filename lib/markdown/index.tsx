@@ -1,3 +1,5 @@
+import { Bold, Italic, Underline, Copy, Scissors, Heading1, Heading2, Heading3, List, ListOrdered } from 'lucide-react'
+
 export const htmlToMarkdown = (html: string): string => {
   let result = html
     .replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n')
@@ -125,6 +127,7 @@ export const markdownToHtml = (markdown: string): string => {
 
 import ReactMarkdown from 'react-markdown'
 import { Components } from 'react-markdown'
+import { CodeBlock } from '@/components/ui/codeblock'
 
 const markdownComponents: Components = {
   ul: ({ children }) => (
@@ -147,12 +150,22 @@ const markdownComponents: Components = {
   ),
   code: ({ children, ...props }) => {
     const inline = !props.className?.includes('language-')
-    return inline ? (
-      <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>
-    ) : (
-      <pre className="bg-muted p-3 rounded-lg overflow-x-auto my-2">
-        <code className="text-sm font-mono">{children}</code>
-      </pre>
+    
+    if (inline) {
+      return <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>
+    }
+    
+    const language = props.className?.replace('language-', '') || 'text'
+    const codeString = String(children).replace(/\n$/, '')
+    
+    return (
+      <div className="my-4">
+        <CodeBlock
+          language={language}
+          filename=""
+          code={codeString}
+        />
+      </div>
     )
   },
   h1: ({ children }) => (
@@ -179,4 +192,76 @@ export const MarkdownRenderer = ({ children, className = '' }: MarkdownRendererP
       </ReactMarkdown>
     </div>
   )
+}
+
+export const getMarkdownEditorFeatures = () => {
+  const handleFormat = (format: string, editorRef: React.RefObject<HTMLDivElement | null>, setContent: (content: string) => void) => {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      alert('Please select some text first')
+      return
+    }
+
+    const selectedText = selection.toString()
+    if (!selectedText) {
+      alert('Please select some text first')
+      return
+    }
+    
+    switch (format) {
+      case 'bold':
+        document.execCommand('bold', false)
+        break
+      case 'italic':
+        document.execCommand('italic', false)
+        break
+      case 'underline':
+        document.execCommand('underline', false)
+        break
+      case 'h1':
+        document.execCommand('formatBlock', false, 'H1')
+        break
+      case 'h2':
+        document.execCommand('formatBlock', false, 'H2')
+        break
+      case 'h3':
+        document.execCommand('formatBlock', false, 'H3')
+        break
+      case 'bulletlist':
+        document.execCommand('insertUnorderedList', false)
+        break
+      case 'numberedlist':
+        document.execCommand('insertOrderedList', false)
+        break
+      case 'copy':
+        document.execCommand('copy', false)
+        break
+      case 'cut':
+        document.execCommand('cut', false)
+        break
+    }
+    
+    if (editorRef.current) {
+      editorRef.current.focus()
+      setContent(editorRef.current.innerHTML)
+    }
+  }
+
+  const formatCommands = [
+    { key: 'copy', icon: Copy, label: 'Copy', group: 'clipboard' },
+    { key: 'cut', icon: Scissors, label: 'Cut', group: 'clipboard' },
+    { key: 'bold', icon: Bold, label: 'Bold', group: 'text' },
+    { key: 'italic', icon: Italic, label: 'Italic', group: 'text' },
+    { key: 'underline', icon: Underline, label: 'Underline', group: 'text' },
+    { key: 'h1', icon: Heading1, label: 'Heading 1', group: 'heading' },
+    { key: 'h2', icon: Heading2, label: 'Heading 2', group: 'heading' },
+    { key: 'h3', icon: Heading3, label: 'Heading 3', group: 'heading' },
+    { key: 'bulletlist', icon: List, label: 'Bullet List', group: 'list' },
+    { key: 'numberedlist', icon: ListOrdered, label: 'Numbered List', group: 'list' }
+  ]
+
+  return {
+    handleFormat,
+    formatCommands
+  }
 }

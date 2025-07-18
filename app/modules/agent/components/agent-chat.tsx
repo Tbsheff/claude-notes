@@ -1,11 +1,10 @@
 import { useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
-import { AgentMessage, ThinkingMessage } from './agent-message'
+import { AgentMessage, ThinkingMessage } from './agent-chat-message'
 import { DocumentCard } from './document-card'
 import { cn } from '@/lib/utils'
-import { ChatHeader } from './agent-chat-header'
 import { AgentChatPopover } from './agent-chat-popover'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
 import { useAgentChat } from '@/hooks/use-agent-chat'
@@ -51,14 +50,21 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
       isOpen ? "w-[480px]" : "w-0 overflow-hidden"
     )}>
       <div className="h-full flex flex-col w-full">
-        <div className="flex items-center justify-between border-b border-border">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <div className="flex-1 min-w-0">
-            <ChatHeader
-              currentChatTitle={activeTitle || undefined}
-              onCreateChat={handleCreateChat}
-            />
+            <h2 className="text-sm font-medium truncate">
+              {activeTitle || 'New Chat'}
+            </h2>
           </div>
-          <div className="flex items-center gap-1 mr-2">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCreateChat}
+              className="h-7 w-7 p-0 text-muted-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
             <AgentChatPopover
               currentChatId={currentChatId}
               onSelectChat={handleSelectChat}

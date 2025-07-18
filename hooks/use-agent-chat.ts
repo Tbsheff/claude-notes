@@ -86,14 +86,50 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
       }))
     }
 
+    const handleStreamError = async (_event: any, data: { error: string; friendlyMessage?: string; timestamp: string }) => {
+      const { error, friendlyMessage, timestamp } = data
+      
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1]
+        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.metadata?.isStreaming) {
+          const errorBlock = {
+            id: `error-block-${lastMessage.id}-${Date.now()}`,
+            type: 'error' as const,
+            status: 'error' as const,
+            data: {
+              error,
+              message: friendlyMessage || error
+            }
+          }
+          
+          const updatedMessage = {
+            ...lastMessage,
+            blocks: [...lastMessage.blocks, errorBlock],
+            metadata: {
+              ...lastMessage.metadata,
+              isStreaming: false
+            }
+          }
+          
+          agentApi.updateMessage(updatedMessage).catch(() => {})
+          return [...prev.slice(0, -1), updatedMessage]
+        }
+        return prev
+      })
+      
+      setIsLoading(false)
+    }
+
     window.electronAPI.ipcRenderer.on('ai-stream-part', handleStreamPart)
     window.electronAPI.ipcRenderer.on('ai-stream-complete', handleStreamComplete)
     window.electronAPI.ipcRenderer.on('claude-code-event', handleClaudeCodeEventLocal)
+    window.electronAPI.ipcRenderer.on('ai-stream-error', handleStreamError)
 
     return () => {
       window.electronAPI.ipcRenderer.removeListener('ai-stream-part', handleStreamPart)
       window.electronAPI.ipcRenderer.removeListener('ai-stream-complete', handleStreamComplete)
       window.electronAPI.ipcRenderer.removeListener('claude-code-event', handleClaudeCodeEventLocal)
+      window.electronAPI.ipcRenderer.removeListener('ai-stream-error', handleStreamError)
       
       Object.keys(streamPartsRef.current).forEach(key => {
         delete streamPartsRef.current[key]
@@ -190,6 +226,11 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
   }
 
   const handleSelectChat = async (chatId: string) => {
+    if (chatId === 'new') {
+      handleCreateChat()
+      return
+    }
+    
     setCurrentChatId(chatId)
     const chat = await agentApi.getChat(chatId)
     if (chat) {

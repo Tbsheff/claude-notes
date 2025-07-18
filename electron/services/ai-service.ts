@@ -178,6 +178,12 @@ async function processStreamChunks(streamResult: any, streamId: string, rebuildC
     }
 
   } catch (error) {
-    mainWindow?.webContents.send('ai-stream-error', { streamId, error: error instanceof Error ? error.message : String(error) })
+    const { getErrorMessage } = await import('../../lib/agent/error-handler')
+    const friendlyMessage = getErrorMessage(error)
+    mainWindow?.webContents.send('ai-stream-error', { 
+      streamId, 
+      error: error instanceof Error ? error.message : String(error),
+      friendlyMessage
+    })
   }
 } 
