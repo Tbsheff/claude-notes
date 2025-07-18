@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
  import { Sparkles, Download } from 'lucide-react'
 import { SettingsDialog } from './editor-settings-dialog'
 import { exportTextFile } from '@/app/modules/general/api'
+import { formatDate } from '@/lib/utils'
 
 interface NoteEditorHeaderProps {
   content: string
@@ -14,14 +15,6 @@ export { Sparkles } from 'lucide-react'
 
 export function NoteEditorHeader({ content, onToggleChat, createdAt }: NoteEditorHeaderProps) {
   
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-  
   const handleExport = () => {
     const filename = `note-${new Date().toISOString().split('T')[0]}`
     exportTextFile(content, filename, 'text')
@@ -31,7 +24,7 @@ export function NoteEditorHeader({ content, onToggleChat, createdAt }: NoteEdito
     <div className="border-b border-border px-6 py-2 flex items-center justify-between bg-background">
       <div className="flex items-center gap-2">
         <div className="text-sm text-muted-foreground">
-          {formatDateTime(createdAt)}
+          {formatDate(createdAt)}
         </div>
       </div>
       

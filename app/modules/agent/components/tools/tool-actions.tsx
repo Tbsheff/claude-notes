@@ -1,7 +1,8 @@
 import { TreeToolActionProps, CollapseToolActionProps, getShortLabel } from '../../api/types'
+import { cleanMessagePrefix } from '@/lib/utils'
 
 export const TreeToolAction = ({ event, icon, label }: TreeToolActionProps) => {
-  const content = (event.message || '').replace(`${label}: `, '')
+  const content = cleanMessagePrefix(event.message, label)
   
   return (
     <div className="border-b border-border last:border-0">

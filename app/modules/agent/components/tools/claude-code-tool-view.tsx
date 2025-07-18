@@ -5,6 +5,7 @@ import { TreeToolAction, CollapseToolAction } from './tool-actions'
 import { ToolBlock } from '@/lib/agent/types'
 import { toolRegistry } from '@/lib/agent/tool-registry'
 import { markdownToHtml } from '@/lib/markdown'
+import { cleanMessagePrefix } from '@/lib/utils'
 
 
 export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
@@ -25,7 +26,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <div 
                 className="text-sm text-foreground prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{ 
-                  __html: markdownToHtml(event.message?.replace('Agent: ', '') || 'No message') 
+                  __html: markdownToHtml(cleanMessagePrefix(event.message, 'Agent') || 'No message') 
                 }}
               />
             </div>
@@ -40,7 +41,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
           const message = event.message || ''
           
           if (message.includes('Edit:')) {
-            const filePath = (message || '').replace('Edit: ', '')
+            const filePath = cleanMessagePrefix(message, 'Edit')
             const fileName = filePath.split('/').pop() || filePath
             
             return (

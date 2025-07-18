@@ -30,14 +30,11 @@ export class WorkspaceManager {
         await fs.access(nodeModulesPath)
       } catch {
         try {
-          console.log('1. Installing dependencies...')
           const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Installing dependencies...', icon: '●' })
           await execAsync('npm install --silent', { cwd: this.workspacePath, timeout: 300000 })
-          console.log('2. Dependencies installed successfully')
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Dependencies installed', icon: '○' })
         } catch (installError) {
-          console.log('3. Failed to install dependencies:', installError)
           const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Failed to install dependencies', icon: '!' })
         }

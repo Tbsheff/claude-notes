@@ -39,8 +39,9 @@ export const htmlToMarkdown = (html: string): string => {
   return result.trim()
 }
 
+import { escapeHtml } from '@/lib/utils'
+
 export const markdownToHtml = (markdown: string): string => {
-  const escapeHtml = (str: string) => str.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const inline = (text: string) => text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')

@@ -9,6 +9,7 @@ import { markdownToHtml } from '@/lib/markdown'
 import { AgentChat } from '@/app/modules/agent/components/agent-chat'
 import { useNoteManager } from '@/hooks/use-note-manager'
 import { useDocumentSync } from '@/hooks/use-document-sync'
+import { stripHtmlTags } from '@/lib/utils'
 
 function EditorContent() {
   const [isBuilding, setIsBuilding] = useState(false)
@@ -36,7 +37,7 @@ function EditorContent() {
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
   const toggleChat = () => setIsChatOpen(!isChatOpen)
 
-  const getPlainTextContent = () => (content || '').replace(/<[^>]+>/g, ' ').trim()
+  const getPlainTextContent = () => stripHtmlTags(content || '')
   
   useEffect(() => {
     if (!window.electronAPI) return
