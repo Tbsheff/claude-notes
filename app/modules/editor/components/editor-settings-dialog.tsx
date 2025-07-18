@@ -1,5 +1,5 @@
 
-import { Settings, Moon, Sun, MoreHorizontal, Key, AlertCircle, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Settings, MoreHorizontal, Trash2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
