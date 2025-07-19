@@ -1,6 +1,6 @@
 export interface AITextEditorConfig {
   enabled: boolean
-  model: string
+  model?: string
 }
 
 export interface AITextEditorState {

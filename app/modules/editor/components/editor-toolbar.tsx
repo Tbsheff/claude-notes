@@ -46,8 +46,6 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
     setShowMenu(false)
   }
 
-
-
   const handleAIAction = async (action: 'fix' | 'improve') => {
     const selection = window.getSelection()
     if (!selection || selection.rangeCount === 0) {
@@ -135,7 +133,6 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
           {aiTextEditorEnabled && aiTextEditor.renderFixButton(() => handleAIAction('fix'))}
           
           {aiTextEditorEnabled && aiTextEditor.renderImproveButton(() => handleAIAction('improve'))}
-          
 
         </div>
       )}

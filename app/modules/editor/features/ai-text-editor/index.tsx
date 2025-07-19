@@ -14,10 +14,7 @@ export const aiTextEditorFeature = {
   create: (config: AITextEditorConfig) => new AITextEditorCore(config),
   
   useFeature: (enabled: boolean) => {
-    const core = new AITextEditorCore({ 
-      enabled, 
-      model: 'anthropic/claude-3.5-sonnet'
-    })
+    const core = new AITextEditorCore({ enabled })
     return {
       isEnabled: () => core.isEnabled(),
       setEnabled: (enabled: boolean) => core.setEnabled(enabled),
@@ -36,10 +33,7 @@ export function useAITextEditor(enabled: boolean = true) {
   })
   
   const [core] = useState(() => {
-    const aiCore = new AITextEditorCore({ 
-      enabled, 
-      model: 'anthropic/claude-3.5-sonnet'
-    })
+    const aiCore = new AITextEditorCore({ enabled })
     aiCore.setOnStateChange(setState)
     return aiCore
   })
