@@ -10,6 +10,7 @@ export function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'Claude Notes',
+    icon: path.join(__dirname, '../public/logo.svg'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
