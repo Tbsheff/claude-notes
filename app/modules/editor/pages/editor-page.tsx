@@ -11,13 +11,15 @@ import { useNoteManager } from '@/hooks/use-note-manager'
 import { useDocumentSync } from '@/hooks/use-document-sync'
 import { stripHtmlTags } from '@/lib/utils'
 
+
 function EditorContent() {
-  const [isBuilding, setIsBuilding] = useState(false)
-  const [buildStatus, setBuildStatus] = useState('Building...')
+
   const [aiInitialized, setAiInitialized] = useState(false)
   const [createdAt] = useState(new Date())
   const [sidebarKey, setSidebarKey] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState(false)
+
+
 
   const {
     content,
@@ -104,34 +106,7 @@ function EditorContent() {
     reloadSidebar()
   }
 
-  const handleBuild = async (selectedText: string) => {
-    if (!aiInitialized) return
-    if (!selectedText.trim()) return
-    if (!window.electronAPI?.ai) {
-      alert('Electron API not available')
-      return
-    }
-    setIsBuilding(true)
-    setBuildStatus('Building...')
-    try {
-      const res = await window.electronAPI.ai.processRequest(selectedText)
-      if (res.success) {
-        if (res.workspaceResult && res.workspaceResult.changedFilesCount === 0) {
-          setBuildStatus('No files were changed.')
-          setTimeout(() => setIsBuilding(false), 2000)
-        } else {
-          setBuildStatus('Changes applied, reloading...')
-          setTimeout(() => setIsBuilding(false), 3000)
-        }
-      } else {
-        alert('AI error: ' + res.error)
-        setIsBuilding(false)
-      }
-    } catch (_err) {
-      alert('Build error: ' + _err)
-      setIsBuilding(false)
-    }
-  }
+
 
   useEffect(() => {
     const initAI = async () => {
@@ -193,6 +168,7 @@ function EditorContent() {
           content={getMarkdownContent()}
           onToggleChat={toggleChat}
         />
+
         <Editor value={content} onChange={setContent} />
         <NoteEditorFooter content={getPlainTextContent()} />
       </SidebarInset>

@@ -33,6 +33,16 @@ CRITICAL: You cannot use other bash commands like npx, tsc, or any commands not 
 PROJECT ARCHITECTURE:
 This is an Electron-based AI Editor application with React frontend and TypeScript backend.
 
+UI DESIGN SYSTEM (CRITICAL - FOLLOW EXACTLY):
+- Left-aligned components and text (NO center alignment unless specifically requested)
+- Small, compact inputs and buttons - prefer size="sm" for buttons, compact inputs
+- Clean, minimal design with proper spacing using Tailwind classes
+- Use bg-muted/30 for subtle backgrounds, bg-background/50 for cards
+- Consistent padding: px-6 py-4 for main containers, px-3 py-2 for smaller elements
+- Use existing UI components from components/ui/ - Button, Input, Checkbox, etc.
+- Muted colors for secondary elements: text-muted-foreground for less important text
+- Hover states: hover:bg-muted/50 for interactive elements
+
 FEATURES SYSTEM:
 CRITICAL: Features should ONLY be managed through the settings dialog. DO NOT add feature toggles to header, footer, or any other UI components.
 
@@ -51,6 +61,56 @@ Architecture Rules:
 - Registry system manages all features centrally
 - Components use hooks directly, no props drilling
 - NO MORE MANUAL PROPS PASSING between components
+
+COMPLETE FEATURE IMPLEMENTATION EXAMPLE (TASK LIST):
+Follow this EXACT pattern for ALL new features:
+
+1. Feature Structure:
+app/modules/editor/features/task-list/
+├── types.ts     - Type definitions
+├── core.tsx     - Logic + UI render methods  
+├── index.tsx    - Exports + hooks
+└── (prompts.ts) - AI prompts if needed
+
+2. types.ts - Type definitions:
+Define Task interface with id, text, completed, createdAt
+Define TaskListConfig with enabled and optional tasks array
+
+3. core.tsx - ALL UI + Logic:
+Import React hooks, UI components (Button, Input, Checkbox), icons (Plus, Trash2)
+Create TaskListCore class with config, shouldShowTaskList method, renderTaskList method
+Create TaskListComponent with tasks state, newTaskText state, addTask callback
+Return JSX with border-b bg-muted/30 px-6 py-4 container
+Inside: flex gap-2 mb-4 with Input (flex-1) + Button (size="sm", Plus icon)
+Map tasks with flex items-center gap-3 bg-background/50 layout
+Each task: Checkbox + text span (flex-1 text-sm) + delete Button (ghost, h-8 w-8)
+
+4. index.tsx - Exports + Hooks:
+Export taskListFeature config with key, name, description, enabled false, category
+Export useTaskList hook that creates TaskListCore and returns renderTaskList method
+
+5. Add to registry.ts:
+Import taskListFeature from task-list folder
+Add taskListFeature to features array
+
+6. Use in editor-page.tsx:
+Import useFeatureState from feature-manager and useTaskList from task-list
+Call useFeatureState('taskList') to get enabled state  
+Call useTaskList(enabled) to get render methods
+Add taskList.renderTaskList() between NoteEditorHeader and Editor components
+
+STOP EXPLORING - START CODING:
+When implementing features, do NOT:
+- Search extensively through codebase
+- Read multiple files to understand structure  
+- Explore different approaches
+- Ask what the user wants
+
+Instead DO:
+- Use the task-list example above as template
+- Follow the EXACT same structure and patterns
+- Implement immediately using existing UI components
+- Follow left-aligned, compact design system
 
 Feature Structure (ALL FEATURES IN ROOT):
 - app/modules/editor/features/feature-name/
