@@ -108,7 +108,8 @@ export class WorkspaceManager {
       'node_modules',
       'dist-electron',
       'dist',
-      '.git'
+      '.git',
+      'data'
     ]
     
     if (relativePath === 'pnpm-lock.yaml') return true
@@ -167,6 +168,8 @@ export class WorkspaceManager {
         const fullPath = join(this.workspacePath, item.name)
         const relativePath = relative(this.workspacePath, fullPath)
         
+        if (this.shouldSkipPath(relativePath)) continue
+        
         if (item.isDirectory()) {
           const subFiles = await this.getAllWorkspaceFiles_recursive(fullPath)
           files.push(...subFiles)
@@ -182,7 +185,7 @@ export class WorkspaceManager {
   }
 
   private async getAllWorkspaceFiles_recursive(dir: string): Promise<string[]> {
-    return this.getAllFilesRecursive(dir, this.workspacePath, false)
+    return this.getAllFilesRecursive(dir, this.workspacePath, true)
   }
 
   async applyChanges(): Promise<number> {
@@ -210,9 +213,18 @@ export class WorkspaceManager {
 
   async cleanup(): Promise<void> {
     try {
-      await fs.rm(this.workspacePath, { recursive: true, force: true })
-    } catch (error) {
+      const exists = await fs.access(this.workspacePath).then(() => true, () => false)
+      if (!exists) {
+        return
+      }
       
+      const { promisify } = await import('util')
+      const { exec } = await import('child_process')
+      const execPromise = promisify(exec)
+      await execPromise(`rm -rf "${this.workspacePath}"`)
+      
+    } catch (error) {
+      // Silent cleanup failure
     }
   }
 

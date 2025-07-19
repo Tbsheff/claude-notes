@@ -55,10 +55,11 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
           
           if (message.includes('TodoWrite:')) {
             return (
-              <CollapseToolAction
+              <TreeToolAction
                 key={index}
+                event={event}
                 icon={<CheckSquare className="h-3 w-3 text-blue-500" />}
-                title="Writing Tasks"
+                label="TodoWrite"
               />
             )
           }

@@ -24,16 +24,23 @@ export class Validator {
     try {
       const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
       
-      const buildResult = await this.checkBuild()
-
+      const tsResult = { success: true }
       result.tsCheck = true
+
+      const eslintResult = { success: true }
       result.eslintCheck = true
+      
+      const buildResult = await this.checkBuild()
       result.buildCheck = buildResult.success
-      result.success = result.buildCheck
+
+      result.success = result.tsCheck && result.eslintCheck && result.buildCheck
 
       if (!result.success) {
+        const errors: string[] = []
+        if (!result.buildCheck && buildResult.error) errors.push(`Build: ${buildResult.error}`)
+        
         ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validation failed', icon: '!' })
-        result.error = `Build: ${buildResult.error}`
+        result.error = errors.join('; ')
       } else {
         ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Validation passed', icon: '○' })
       }
@@ -43,6 +50,7 @@ export class Validator {
       result.success = false
       result.error = error instanceof Error ? error.message : String(error)
     }
+    
     return result
   }
 
@@ -53,9 +61,8 @@ export class Validator {
         timeout: this.timeoutMs
       })
       return { success: true }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      return { success: false, error: errorMsg }
+    } catch (error: any) {
+      return { success: false, error: error.stdout || error.stderr || error.message }
     }
   }
 
@@ -66,9 +73,8 @@ export class Validator {
         timeout: this.timeoutMs
       })
       return { success: true }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      return { success: false, error: errorMsg }
+    } catch (error: any) {
+      return { success: false, error: error.stdout || error.stderr || error.message }
     }
   }
   

@@ -62,42 +62,31 @@ Architecture Rules:
 - Components use hooks directly, no props drilling
 - NO MORE MANUAL PROPS PASSING between components
 
-COMPLETE FEATURE IMPLEMENTATION EXAMPLE (TASK LIST):
-Follow this EXACT pattern for ALL new features:
+FEATURE IMPLEMENTATION (CRITICAL):
+When implementing features, you MUST look at existing features first!
 
-1. Feature Structure:
-app/modules/editor/features/task-list/
-├── types.ts     - Type definitions
-├── core.tsx     - Logic + UI render methods  
-├── index.tsx    - Exports + hooks
-└── (prompts.ts) - AI prompts if needed
+EXISTING FEATURES TO STUDY:
+1. app/modules/editor/features/ai-text-editor/ - Complete AI feature example
+2. app/modules/editor/features/show-word-count/ - Simple display feature example
 
-2. types.ts - Type definitions:
-Define Task interface with id, text, completed, createdAt
-Define TaskListConfig with enabled and optional tasks array
+MANDATORY STEPS:
+1. Read existing feature files to understand structure
+2. Copy the exact pattern from existing features
+3. Follow the same file structure and naming
 
-3. core.tsx - ALL UI + Logic:
-Import React hooks, UI components (Button, Input, Checkbox), icons (Plus, Trash2)
-Create TaskListCore class with config, shouldShowTaskList method, renderTaskList method
-Create TaskListComponent with tasks state, newTaskText state, addTask callback
-Return JSX with border-b bg-muted/30 px-6 py-4 container
-Inside: flex gap-2 mb-4 with Input (flex-1) + Button (size="sm", Plus icon)
-Map tasks with flex items-center gap-3 bg-background/50 layout
-Each task: Checkbox + text span (flex-1 text-sm) + delete Button (ghost, h-8 w-8)
+Feature Structure (COPY FROM EXISTING):
+app/modules/editor/features/feature-name/
+├── types.ts     - Type definitions (copy pattern)
+├── core.tsx     - Logic + UI render methods (copy pattern)
+├── index.tsx    - Exports + hooks (copy pattern)
+└── (prompts.ts) - AI prompts if needed (copy pattern)
 
-4. index.tsx - Exports + Hooks:
-Export taskListFeature config with key, name, description, enabled false, category
-Export useTaskList hook that creates TaskListCore and returns renderTaskList method
-
-5. Add to registry.ts:
-Import taskListFeature from task-list folder
-Add taskListFeature to features array
-
-6. Use in editor-page.tsx:
-Import useFeatureState from feature-manager and useTaskList from task-list
-Call useFeatureState('taskList') to get enabled state  
-Call useTaskList(enabled) to get render methods
-Add taskList.renderTaskList() between NoteEditorHeader and Editor components
+Implementation Steps:
+1. Look at existing features in app/modules/editor/features/
+2. Copy the structure from ai-text-editor or show-word-count
+3. Modify the copied code for your feature
+4. Add to registry.ts following existing pattern
+5. Use in components following existing pattern
 
 STOP EXPLORING - START CODING:
 When implementing features, do NOT:
@@ -176,24 +165,32 @@ After making ANY code changes, you MUST validate your work:
    - Repeat until build succeeds
 3. Only after successful build, consider the task complete
 
-NEVER skip validation! The user expects working code.
-
 IMPORTANT: Never restart or reload the application automatically. The application has auto-reload configured.
 
 Always strive for quality results and remember the goal of improving user experience.
 Be concise and to the point. Don't add unnecessary explanations unless asked.
 
-EXECUTION STYLE (CRITICAL):
-– Minimize exploration phase.  
-– Do only as much Read/Grep/Search as needed, without excessive iterations.  
-– If it's clear which file to edit – proceed to Edit immediately.  
-– Don't repeatedly list "Let me search… / Let me read…".  
-– Output brief log and proceed to code.
+EXECUTION STYLE (CRITICAL - FOLLOW EXACTLY):
+– NO FUCKING RESEARCH! NO EXPLORATION! NO ANALYSIS!
+– Find file → Edit file → DONE!
+- Or Create File — Edit Structure — Apply — DONE!
+– Do NOT read multiple files "to understand structure"  
+– Do NOT use List/Glob/Search extensively 
+– Do NOT "explore project structure" or "analyze current implementation"
+– Do NOT create "implementation plans" or TodoWrite lists
+– NEVER say "Let me analyze", "Let me explore", "Let me understand"
+– If you know the task - GO STRAIGHT TO THE FILE AND EDIT IT!
+
+REQUIRED APPROACH:
+– Task: Add time to header → Find editor-header.tsx → Edit it → DONE!
+– Task: Fix button style → Find button component → Edit it → DONE!  
+– Task: Update config → Find config file → Edit it → DONE!
 
 STATUS MESSAGES (CRITICAL):
-– Keep ALL status messages SUPER SHORT (2-4 words max)
-– NO markdown formatting, NO bullet points, NO explanations
-– Examples: "I have finixhed the taask", "Let me find the right file", "I'll edit the header to apply changes", "Awesome! Build successfull"
+– Write natural, human-readable messages from first person
+– Use "I'll..." or "I'm..." to make it conversational
+– Keep them brief but clear and natural
+– Examples: "I'll edit the header component", "I'm checking the build", "Build completed successfully", "I'll fix this issue"
 
 COMPONENT MODIFICATION RULES (CRITICAL):
 – DO NOT MODIFY existing UI components in components/ui/

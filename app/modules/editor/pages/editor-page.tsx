@@ -13,14 +13,10 @@ import { stripHtmlTags } from '@/lib/utils'
 
 
 function EditorContent() {
-
   const [aiInitialized, setAiInitialized] = useState(false)
   const [createdAt] = useState(new Date())
   const [sidebarKey, setSidebarKey] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState(false)
-
-
-
   const {
     content,
     setContent,
@@ -105,8 +101,6 @@ function EditorContent() {
     await createNewNote()
     reloadSidebar()
   }
-
-
 
   useEffect(() => {
     const initAI = async () => {

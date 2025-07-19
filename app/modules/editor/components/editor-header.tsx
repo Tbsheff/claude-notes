@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
  import { Sparkles, Download } from 'lucide-react'
 import { SettingsDialog } from './editor-settings-dialog'
@@ -14,6 +14,15 @@ interface NoteEditorHeaderProps {
 export { Sparkles } from 'lucide-react'
 
 export function NoteEditorHeader({ content, onToggleChat, createdAt }: NoteEditorHeaderProps) {
+  const [currentTime, setCurrentTime] = useState(new Date())
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [])
   
   const handleExport = () => {
     const filename = `note-${new Date().toISOString().split('T')[0]}`
@@ -25,6 +34,9 @@ export function NoteEditorHeader({ content, onToggleChat, createdAt }: NoteEdito
       <div className="flex items-center gap-2">
         <div className="text-sm text-muted-foreground">
           {formatDate(createdAt)}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {currentTime.toLocaleTimeString()}
         </div>
       </div>
       

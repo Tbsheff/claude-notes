@@ -83,6 +83,16 @@ export const processToolMessage = (toolName: string, toolInput: any) => {
       const filePath = toolInput.file_path || toolInput.path || 'unknown file'
       return `MultiEdit: ${getFileName(filePath)}`
     }
+    case 'TodoWrite': {
+      const todos = toolInput.todos || []
+      const todoCount = todos.length
+      if (todoCount === 0) return 'TodoWrite: No todos'
+      
+      const firstTodo = todos[0]?.content || 'Unknown task'
+      return todoCount > 1 
+        ? `TodoWrite: ${firstTodo} (+${todoCount - 1} more)` 
+        : `TodoWrite: ${firstTodo}`
+    }
     default: {
       if (typeof toolInput === 'object' && toolInput !== null) {
         if (toolInput.pattern) return `${toolName}: "${toolInput.pattern}"`
@@ -99,43 +109,15 @@ export const processToolMessage = (toolName: string, toolInput: any) => {
   }
 }
 
-function buildAllowedTools(workspaceDir: string): string[] {
-  return [
-    `Read(${workspaceDir}/*)`,
-    `Write(${workspaceDir}/*)`,
-    `Edit(${workspaceDir}/*)`,
-    `List(${workspaceDir}/*)`,
-    `Search(${workspaceDir}/*)`,
-    `Find(${workspaceDir}/*)`,
-    'Bash(npm run build)',
-    'Bash(npm run dev)',
-    'Bash(npm run lint)',
-    'Bash(npm run test)',
-    'Bash(npm run build:vite)',
-    'Bash(npm run build:electron)',
-    'Bash(npm run dev:electron)',
-    'Bash(npm run watch-dev)',
-    'Bash(npm run electron)',
-    `Bash(mkdir ${workspaceDir}/*)`,
-    `Bash(ls ${workspaceDir}/*)`,
-    `Bash(cat ${workspaceDir}/*)`,
-    `Bash(find ${workspaceDir} *)`,
-    `Bash(grep * ${workspaceDir}/*)`,
-    'Bash(ls)',
-    'Bash(ls .)',
-    'Bash(ls ./)',
-    'Bash(pwd)'
-  ]
-}
+
 
 export function getQueryOptions(config: any, cwd?: string, customSystemPrompt?: string) {
   const workspaceDir = cwd || config.cwd || process.cwd()
+  
   return {
     maxTurns: config.maxTurns || 50,
     cwd: workspaceDir,
-    allowedTools: config.allowedTools || buildAllowedTools(workspaceDir),
-    disallowedTools: config.disallowedTools || [],
-    permissionMode: config.permissionMode || 'acceptEdits',
+    permissionMode: 'bypassPermissions',
     customSystemPrompt: customSystemPrompt || config.customSystemPrompt || MAIN_SYSTEM_PROMPT,
     appendSystemPrompt: config.appendSystemPrompt
   }
@@ -190,7 +172,9 @@ export class ClaudeCodeLogger {
   }
 
   static logMessage(msg: SDKMessage) {
-    if (msg.type !== 'assistant' || !msg.message?.content) return
+    if (msg.type !== 'assistant' || !msg.message?.content) {
+      return
+    }
 
     const content = Array.isArray(msg.message.content)
       ? msg.message.content.find((c) => c.type === 'text')?.text
@@ -205,7 +189,17 @@ export class ClaudeCodeLogger {
 
     if (Array.isArray(msg.message.content)) {
       msg.message.content.forEach((item: any) => {
-        if (item.type === 'tool_use') this.logTool(item)
+        if (item.type === 'tool_use') {
+          this.logTool(item)
+        }
+        
+        if (item.type === 'tool_result') {
+          if (item.is_error) {
+            this.logToolResult(item.content || 'Unknown error', true)
+          } else {
+            this.logToolResult(item.content || 'Success', false)
+          }
+        }
       })
     }
   }

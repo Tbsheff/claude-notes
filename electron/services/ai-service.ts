@@ -32,7 +32,7 @@ export async function initializeAI(config: any = {}) {
   try {
     const { ClaudeCodeAgent } = await import('../../lib/tools/claude-code/core')
     const projectRoot = path.resolve(__dirname, '../../../')
-    aiAgent = new ClaudeCodeAgent({ apiKey, cwd: projectRoot })
+    aiAgent = new ClaudeCodeAgent({ apiKey })
     await aiAgent.initialize()
     return { success: true }
   } catch (e) {
