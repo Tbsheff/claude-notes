@@ -1,4 +1,5 @@
 import type { LLMMessage, LLMResponse, StoredApiKeys } from './types'
+import { logger } from '../logger'
 
 export async function llmCall(
   messages: LLMMessage[],
@@ -9,11 +10,15 @@ export async function llmCall(
     const apiKey = storedKeys.anthropicApiKey
 
     if (!apiKey) {
+      logger.llm('ERROR: API key missing')
       throw new Error('Anthropic API key not found. Please configure it in Settings.')
     }
 
     const systemMessage = messages.find(msg => msg.role === 'system')
     const userMessages = messages.filter(msg => msg.role !== 'system')
+    
+    const lastUserMessage = userMessages[userMessages.length - 1]?.content || 'No content'
+    logger.llm(`→ ${model}: "${lastUserMessage.slice(0, 100)}..."`)
     
     const requestBody: any = {
       model: model.replace('anthropic/', ''),
@@ -42,17 +47,21 @@ export async function llmCall(
 
     if (!response.ok) {
       const errorText = await response.text()
+      logger.llm(`API Error ${response.status}: ${errorText.slice(0, 200)}`)
       throw new Error(`Anthropic API Error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
     const content = data.content?.[0]?.text
 
+    logger.llm(`← Response: "${content || 'Empty'}"`)
     return { success: true, content }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.llm(`ERROR: ${errorMsg}`)
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMsg
     }
   }
 } 

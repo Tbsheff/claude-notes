@@ -3,6 +3,7 @@ import { join, resolve, relative, isAbsolute } from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { WorkspaceConfig, WorkspaceResult } from '../tools/claude-code/types'
+import { logger } from '../logger'
 
 const execAsync = promisify(exec)
 
@@ -21,9 +22,11 @@ export class WorkspaceManager {
 
   async create(): Promise<WorkspaceResult> {
     try {
+      logger.claudeCode(`Workspace created: ${this.workspacePath}`)
       
       await this.cleanup()
       await fs.mkdir(this.workspacePath, { recursive: true })
+      
       await this.copyFiles()
 
       const nodeModulesPath = join(this.workspacePath, 'node_modules')
@@ -33,11 +36,14 @@ export class WorkspaceManager {
         try {
           const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Installing dependencies...', icon: '●' })
+          logger.claudeCode('Installing dependencies...')
           await execAsync('npm install --silent', { cwd: this.workspacePath, timeout: 300000 })
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Dependencies installed', icon: '○' })
+          logger.claudeCode('Dependencies installed')
         } catch (installError) {
           const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
           ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Failed to install dependencies', icon: '!' })
+          logger.claudeCode(`ERROR installing dependencies: ${installError}`)
         }
       }
       
@@ -46,7 +52,7 @@ export class WorkspaceManager {
         workspacePath: this.workspacePath
       }
     } catch (error) {
-
+      logger.claudeCode(`ERROR creating workspace: ${error}`)
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -56,6 +62,7 @@ export class WorkspaceManager {
 
   async copyFiles(): Promise<void> {
     const filesToCopy = await this.getFilesToCopy()
+    logger.claudeCode(`Copied ${filesToCopy.length} files`)
     
     for (const file of filesToCopy) {
       try {
@@ -64,8 +71,8 @@ export class WorkspaceManager {
         
         await fs.mkdir(resolve(destPath, '..'), { recursive: true })
         await fs.copyFile(srcPath, destPath)
-      } catch {
-        
+      } catch (error) {
+        logger.claudeCode(`ERROR copying ${file}: ${error}`)
       }
     }
   }
@@ -191,6 +198,7 @@ export class WorkspaceManager {
     const changedFiles = await this.getChangedFiles()
     
     if (changedFiles.length > 0) {
+      logger.claudeCode(`Applied ${changedFiles.length} files: ${changedFiles.join(', ')}`)
       const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
       ClaudeCodeLogger.emitEvent({ 
         type: 'tool_action', 
@@ -217,13 +225,14 @@ export class WorkspaceManager {
         return
       }
       
+      logger.claudeCode(`Cleaned up: ${this.workspacePath}`)
       const { promisify } = await import('util')
       const { exec } = await import('child_process')
       const execPromise = promisify(exec)
       await execPromise(`rm -rf "${this.workspacePath}"`)
       
     } catch (error) {
-      // Silent cleanup failure
+      logger.claudeCode(`ERROR cleaning up: ${error}`)
     }
   }
 

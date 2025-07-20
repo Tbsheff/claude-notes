@@ -1,5 +1,6 @@
 import type { SDKMessage } from '@anthropic-ai/claude-code'
 import { MAIN_SYSTEM_PROMPT } from './prompts/main-prompt'
+import { logger } from '../../logger'
 
 export const cleanWorkspacePath = (path: string) => {
   if (path.includes('.agent-workspace-') || path.includes('/var/folders/')) {
@@ -155,6 +156,7 @@ export class ClaudeCodeLogger {
 
   static setCurrentFeatureName(featureName: string) {
     currentFeatureName = featureName
+    logger.claudeCode(`Feature: ${featureName}`)
   }
 
   static getCurrentFeatureName() {
@@ -274,6 +276,7 @@ export class ClaudeCodeLogger {
 
   static logError(error: any) {
     const msg = error instanceof Error ? error.message : String(error)
+    logger.claudeCode(`Agent error: ${msg}`)
     this.emitEvent({ type: 'error', message: `Agent Error: ${msg}`, icon: '!' })
   }
 } 

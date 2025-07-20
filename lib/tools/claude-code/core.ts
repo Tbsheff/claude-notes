@@ -4,6 +4,7 @@ import { MAIN_SYSTEM_PROMPT, createWorkspacePrompt } from './prompts/main-prompt
 import { ClaudeCodeLogger, getQueryOptions } from './logger'
 import { WorkspaceManager } from '../../workspace/manager'
 import { Validator } from '../../workspace/validator'
+import { logger } from '../../logger'
 
 export class ClaudeCodeAgent {
   private config: AgentConfig
@@ -46,6 +47,8 @@ export class ClaudeCodeAgent {
     prompt: string, 
     workspaceConfig: WorkspaceConfig
   ): Promise<AgentResponse & { workspaceResult?: WorkspaceResult }> {
+    logger.claudeCode(`Request: "${prompt}"`)
+    
     const manager = new WorkspaceManager(workspaceConfig, this.config.cwd || process.cwd())
     let workspaceResult: WorkspaceResult | undefined
 
@@ -58,6 +61,7 @@ export class ClaudeCodeAgent {
       if (!workspaceResult.success) {
         throw new Error(`Failed to create workspace: ${workspaceResult.error}`)
       }
+      
       ClaudeCodeLogger.logStart()
 
       const workspacePrompt = createWorkspacePrompt(workspaceResult.workspacePath!)
@@ -76,12 +80,14 @@ export class ClaudeCodeAgent {
         workspaceResult.validationResult = validationResult
         
         if (!validationResult.success) {
+          logger.claudeCode(`Validation failed: ${validationResult.error}`)
           throw new Error(`Validation failed: ${validationResult.error}`)
         }
       }
 
       ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Applying changes to main codebase...', icon: '→' })
       const changedFilesCount = await manager.applyChanges()
+      logger.claudeCode(`Applied ${changedFilesCount} files`)
 
       const response = this.extractResponse(messages)
       
@@ -98,6 +104,7 @@ export class ClaudeCodeAgent {
       }
 
     } catch (error) {
+      logger.claudeCode(`ERROR: ${error}`)
       ClaudeCodeLogger.logError(error)
       
       return { 
