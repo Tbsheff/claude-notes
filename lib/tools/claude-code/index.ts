@@ -55,5 +55,5 @@ export function createClaudeCodeTool(mainWindow: BrowserWindow) {
 
 export * from './core'
 export { ClaudeCodeLogger, cleanWorkspacePath, getFileName, getDirName, truncateCommand, processToolMessage, getQueryOptions } from './logger' 
-export * from './prompt'
+export * from './prompts/main-prompt'
 export * from './types' 

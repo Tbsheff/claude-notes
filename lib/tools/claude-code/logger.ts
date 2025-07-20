@@ -1,5 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-code'
-import { MAIN_SYSTEM_PROMPT } from './prompt'
+import { MAIN_SYSTEM_PROMPT } from './prompts/main-prompt'
 
 export const cleanWorkspacePath = (path: string) => {
   if (path.includes('.agent-workspace-') || path.includes('/var/folders/')) {

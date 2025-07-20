@@ -38,7 +38,7 @@ export class AITextEditorCore {
     return this.state
   }
 
-  async processText(action: 'fix' | 'improve', text: string): Promise<AITextEditorResult> {
+  async _processText(action: 'fix' | 'improve', text: string): Promise<AITextEditorResult> {
     if (this.state.isProcessing) {
       return { success: false, error: 'Already processing' }
     }
@@ -66,8 +66,8 @@ export class AITextEditorCore {
     }
   }
 
-  renderFixButton(onClick: () => void, disabled: boolean = false): React.ReactElement {
-    const isFixing = this.state.isProcessing && this.state.currentAction === 'fix'
+  renderFixButton(onClick: () => void, disabled: boolean = false, isProcessing: boolean): React.ReactElement {
+    const isFixing = isProcessing && this.state.currentAction === 'fix'
     
     return (
       <div 
@@ -86,8 +86,8 @@ export class AITextEditorCore {
     )
   }
 
-  renderImproveButton(onClick: () => void, disabled: boolean = false): React.ReactElement {
-    const isImproving = this.state.isProcessing && this.state.currentAction === 'improve'
+  renderImproveButton(onClick: () => void, disabled: boolean = false, isProcessing: boolean): React.ReactElement {
+    const isImproving = isProcessing && this.state.currentAction === 'improve'
     
     return (
       <div 

@@ -21,6 +21,7 @@ export class WorkspaceManager {
 
   async create(): Promise<WorkspaceResult> {
     try {
+      
       await this.cleanup()
       await fs.mkdir(this.workspacePath, { recursive: true })
       await this.copyFiles()
@@ -111,8 +112,6 @@ export class WorkspaceManager {
       '.git',
       'data'
     ]
-    
-    if (relativePath === 'pnpm-lock.yaml') return true
     
     return skipPaths.some(skip => 
       relativePath === skip || relativePath.startsWith(skip + '/')

@@ -4,6 +4,7 @@ import { X, Plus } from 'lucide-react'
 import { ChatInput } from './agnet-chat-input'
 import { AgentMessage, ThinkingMessage } from './agent-chat-message'
 import { DocumentCard } from './document-card'
+import { AgentChatSuggestions } from './agent-chat-suggestions'
 import { cn } from '@/lib/utils'
 import { AgentChatPopover } from './agent-chat-popover'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
@@ -41,6 +42,13 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
     const streaming = messages.find(m => m.metadata?.isStreaming)
     return !streaming || streaming.blocks.length === 0
   }, [isLoading, messages])
+
+  const handleSuggestionSelect = (suggestion: string) => {
+    setInputValue(suggestion)
+    setTimeout(() => {
+      handleSendMessage()
+    }, 0)
+  }
 
 
 
@@ -82,21 +90,31 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <AgentMessage
-                  key={message.id}
-                  message={message}
-                  currentNote={currentNote}
-                  onApplyChanges={onApplyChanges}
-                  onUpdateMessage={handleUpdateMessage}
-                />
-              ))}
-              {showThinkingMessage && (
-                <ThinkingMessage />
-              )}
-            </div>
+          <div
+            ref={scrollRef}
+            className={cn(
+              "flex-1 p-4 overflow-y-auto",
+              messages.length === 0 && !showThinkingMessage && "flex items-center justify-center"
+            )}
+          >
+            {messages.length === 0 && !showThinkingMessage ? (
+              <AgentChatSuggestions onSelectSuggestion={handleSuggestionSelect} />
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <AgentMessage
+                    key={message.id}
+                    message={message}
+                    currentNote={currentNote}
+                    onApplyChanges={onApplyChanges}
+                    onUpdateMessage={handleUpdateMessage}
+                  />
+                ))}
+                {showThinkingMessage && (
+                  <ThinkingMessage />
+                )}
+              </div>
+            )}
           </div>
 
           <div className="p-4 space-y-3">

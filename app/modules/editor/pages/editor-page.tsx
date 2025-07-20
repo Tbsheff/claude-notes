@@ -10,6 +10,7 @@ import { AgentChat } from '@/app/modules/agent/components/agent-chat'
 import { useNoteManager } from '@/hooks/use-note-manager'
 import { useDocumentSync } from '@/hooks/use-document-sync'
 import { stripHtmlTags } from '@/lib/utils'
+import { useFeatureState } from '../features/feature-manager'
 
 
 function EditorContent() {

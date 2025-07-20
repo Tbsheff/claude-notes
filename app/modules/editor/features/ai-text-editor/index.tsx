@@ -1,63 +1,67 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { AITextEditorCore } from './core'
-import { AITextEditorConfig, AITextEditorState } from './types'
+import type { AITextEditorFeature, AITextEditorState, AITextEditorResult } from './types'
+import { EditorContext } from '../../api'
 
-export const aiTextEditorFeature = {
-  config: {
-    key: 'aiTextEditor',
-    name: 'AI Text Editor',
-    description: 'Fix grammar and improve text with AI',
-    enabled: true,
-    category: 'content'
-  },
-  
-  create: (config: AITextEditorConfig) => new AITextEditorCore(config),
-  
-  useFeature: (enabled: boolean) => {
-    const core = new AITextEditorCore({ enabled })
-    return {
-      isEnabled: () => core.isEnabled(),
-      setEnabled: (enabled: boolean) => core.setEnabled(enabled),
-      processText: (action: 'fix' | 'improve', text: string) => core.processText(action, text),
-      getState: () => core.getState(),
-      renderFixButton: (onClick: () => void, disabled?: boolean) => core.renderFixButton(onClick, disabled),
-      renderImproveButton: (onClick: () => void, disabled?: boolean) => core.renderImproveButton(onClick, disabled)
-    }
-  }
-}
-
-export function useAITextEditor(enabled: boolean = true) {
+export function useAITextEditor(enabled: boolean = true): Omit<AITextEditorFeature, 'state'> {
   const [state, setState] = useState<AITextEditorState>({
     isProcessing: false,
     currentAction: null
   })
   
-  const [core] = useState(() => {
+  const core = useMemo(() => {
     const aiCore = new AITextEditorCore({ enabled })
     aiCore.setOnStateChange(setState)
     return aiCore
-  })
+  }, [enabled])
 
-  const processText = async (action: 'fix' | 'improve', text: string) => {
-    return await core.processText(action, text)
+  const handleAIAction = async (action: 'fix' | 'improve', context: EditorContext) => {
+    const { editorRef, setContent, setShowMenu } = context
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const selectedText = selection.toString()
+    if (!selectedText) return
+
+    const result = await core._processText(action, selectedText)
+    if (result.success && result.content) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      const textNode = document.createTextNode(result.content.trim())
+      range.insertNode(textNode)
+      
+      if (editorRef.current) {
+        editorRef.current.focus()
+        setContent(editorRef.current.innerHTML)
+      }
+    }
+    setShowMenu(false)
   }
 
-  const renderFixButton = (onClick: () => void) => {
-    return core.renderFixButton(onClick, !enabled)
-  }
+  const renderFixButton = useCallback((context: EditorContext) => {
+    return core.renderFixButton(() => handleAIAction('fix', context), !enabled, state.isProcessing)
+  }, [core, enabled, state.isProcessing])
 
-  const renderImproveButton = (onClick: () => void) => {
-    return core.renderImproveButton(onClick, !enabled)
-  }
+  const renderImproveButton = useCallback((context: EditorContext) => {
+    return core.renderImproveButton(() => handleAIAction('improve', context), !enabled, state.isProcessing)
+  }, [core, enabled, state.isProcessing])
 
   return {
-    state,
-    enabled,
-    processText,
+    isAvailable: enabled,
     renderFixButton,
     renderImproveButton,
-    setEnabled: (enabled: boolean) => core.setEnabled(enabled)
   }
+}
+
+export const aiTextEditorFeature = {
+  config: {
+    key: 'aiTextEditor',
+    name: 'AI Text Editor',
+    description: 'Fix grammar and improve text with AI.',
+    enabled: true,
+    category: 'content',
+  },
+  useFeature: useAITextEditor,
 }
 
 export { AITextEditorCore } from './core'

@@ -2,6 +2,7 @@ import React from 'react'
 import { useAITextEditor } from '../features/ai-text-editor'
 import { useFeatureState } from '../features/feature-manager'
 import { getMarkdownEditorFeatures } from '@/lib/markdown'
+import { EditorContext } from '../api'
 
 interface SelectionToolbarProps {
   children?: React.ReactNode
@@ -14,6 +15,7 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
   const [showMenu, setShowMenu] = React.useState(false)
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
   const [aiTextEditorEnabled] = useFeatureState('aiTextEditor')
+  const [followUpEnabled] = useFeatureState('followUp')
   const aiTextEditor = useAITextEditor(aiTextEditorEnabled)
   const { handleFormat, formatCommands } = getMarkdownEditorFeatures()
 
@@ -46,47 +48,9 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
     setShowMenu(false)
   }
 
-  const handleAIAction = async (action: 'fix' | 'improve') => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
-      alert('Please select some text first')
-      return
-    }
-
-    const selectedText = selection.toString()
-    if (!selectedText) {
-      alert('Please select some text first')
-      return
-    }
-
-    try {
-      const result = await aiTextEditor.processText(action, selectedText)
-
-      if (result.success && result.content) {
-        const range = selection.getRangeAt(0)
-        range.deleteContents()
-        const textNode = document.createTextNode(result.content.trim())
-        range.insertNode(textNode)
-        
-        setShowMenu(false)
-        
-        if (editorRef.current) {
-          editorRef.current.focus()
-          setContent(editorRef.current.innerHTML)
-        }
-      } else {
-        alert('AI request failed: ' + (result.error || 'Unknown error'))
-        setShowMenu(false)
-      }
-    } catch (error) {
-      alert('AI request failed: ' + error)
-      setShowMenu(false)
-    }
-  }
-
   const handleClickOutside = (e: MouseEvent) => {
     const target = e.target as Element
-    if (!target.closest('.selection-menu')) {
+    if (!target.closest('.selection-menu') && !target.closest('[data-radix-popper-content-wrapper]')) {
       setShowMenu(false)
     }
   }
@@ -97,6 +61,12 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showMenu])
+
+  const editorContext: EditorContext = {
+    editorRef,
+    setContent,
+    setShowMenu,
+  }
 
   return (
     <div className="relative">
@@ -130,10 +100,12 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
           
           {aiTextEditorEnabled && <div className="bg-border -mx-1 my-1 h-px" />}
           
-          {aiTextEditorEnabled && aiTextEditor.renderFixButton(() => handleAIAction('fix'))}
+          {aiTextEditorEnabled && aiTextEditor.renderFixButton(editorContext)}
           
-          {aiTextEditorEnabled && aiTextEditor.renderImproveButton(() => handleAIAction('improve'))}
-
+          {aiTextEditorEnabled && aiTextEditor.renderImproveButton(editorContext)}
+          
+          {followUpEnabled && <div className="bg-border -mx-1 my-1 h-px" />}
+          
         </div>
       )}
     </div>

@@ -15,6 +15,23 @@ export function Editor({ value, onChange }: EditorProps) {
     }
   }, [value])
 
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      const text = e.clipboardData?.getData('text/plain') || ''
+      document.execCommand('insertText', false, text)
+    }
+
+    editor.addEventListener('paste', handlePaste)
+
+    return () => {
+      editor.removeEventListener('paste', handlePaste)
+    }
+  }, [])
+
   const handleInput = () => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)

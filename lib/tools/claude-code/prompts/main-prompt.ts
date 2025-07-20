@@ -1,3 +1,7 @@
+import { FOLLOW_UP_PROMPT_DOCUMENTATION } from './follow-up-feature-prompt'
+import { TASK_LIST_PROMPT } from './task-list-feature-prompt'
+import { TEXT_TRANSLATOR_PROMPT } from './text-translator-feature-prompt'
+
 export const MAIN_SYSTEM_PROMPT = `
 WORKING DIRECTORY CONSTRAINT:
 You are working in a temporary isolated workspace. You MUST work ONLY within this workspace directory and never access files outside of it.
@@ -81,25 +85,125 @@ app/modules/editor/features/feature-name/
 ├── index.tsx    - Exports + hooks (copy pattern)
 └── (prompts.ts) - AI prompts if needed (copy pattern)
 
-Implementation Steps:
-1. Look at existing features in app/modules/editor/features/
-2. Copy the structure from ai-text-editor or show-word-count
-3. Modify the copied code for your feature
-4. Add to registry.ts following existing pattern
-5. Use in components following existing pattern
+TOOLBAR INTEGRATION (CRITICAL - FOLLOW EXACTLY):
+For features that need toolbar buttons (context menu on text selection):
 
-STOP EXPLORING - START CODING:
-When implementing features, do NOT:
-- Search extensively through codebase
-- Read multiple files to understand structure  
-- Explore different approaches
-- Ask what the user wants
+1. Feature must have renderButton method in core.tsx:
+\`\`\`typescript
+export class FeatureCore {
+  renderButton(editorContext: EditorContext): React.ReactElement | null {
+    if (!this.enabled) return null
+    return (
+      <div 
+        onClick={() => this.handleAction(editorContext)}
+        className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+      >
+        <Icon className="h-4 w-4" />
+        Button Label
+      </div>
+    )
+  }
+}
+\`\`\`
 
-Instead DO:
-- Use the task-list example above as template
-- Follow the EXACT same structure and patterns
-- Implement immediately using existing UI components
-- Follow left-aligned, compact design system
+2. Feature hook must return renderButton:
+\`\`\`typescript
+export function useMyFeature(enabled: boolean) {
+  const core = new FeatureCore({ enabled })
+  return {
+    renderButton: (editorContext: EditorContext) => core.renderButton(editorContext)
+  }
+}
+\`\`\`
+
+3. Add to toolbar in app/modules/editor/components/editor-toolbar.tsx:
+\`\`\`typescript
+const [myFeatureEnabled] = useFeatureState('myFeature')
+const myFeature = useMyFeature(myFeatureEnabled)
+
+// In JSX, add ONE LINE after existing features:
+{myFeatureEnabled && myFeature.renderButton(editorContext)}
+\`\`\`
+
+THAT'S IT! Never overcomplicate toolbar integration. Always follow this exact pattern.
+
+FEATURE PLACEMENT LOCATIONS (CRITICAL - FOLLOW EXACTLY):
+There are 3 main places to add features in the UI:
+
+1. **FOOTER** (like show-word-count):
+   - Best for: Statistics, counters, status indicators
+   - Pattern:
+   \`\`\`typescript
+   const [enabled] = useFeatureState('featureKey')
+   const feature = useFeature(enabled)
+   
+   // In JSX:
+   {enabled && feature.renderStats(content)}
+   \`\`\`
+
+2. **EDITOR PAGE** (like task-list):
+   - Best for: Lists, panels, content that sits above/below editor
+   - Pattern:
+   \`\`\`typescript
+   const [enabled] = useFeatureState('featureKey')
+   const feature = useFeature(enabled)
+   
+   // In JSX (above or below editor):
+   {enabled && feature.renderPanel(content, setContent)}
+   \`\`\`
+
+3. **TOOLBAR** (context menu on text selection):
+   - Best for: AI actions, text transformations, quick actions
+   - Pattern: (already explained above)
+
+FEATURE STRUCTURE PATTERN (COPY FROM show-word-count):
+Based on app/modules/editor/features/show-word-count/:
+
+\`\`\`typescript
+// types.ts
+export interface FeatureConfig {
+  enabled: boolean
+}
+
+// core.tsx
+export class FeatureCore {
+  private config: FeatureConfig
+  
+  constructor(config: FeatureConfig) {
+    this.config = config
+  }
+  
+  isEnabled(): boolean {
+    return this.config.enabled
+  }
+  
+  // Main render method for your location
+  renderStats(text: string): React.ReactElement | null {
+    if (!this.isEnabled()) return null
+    return <span className="text-xs">Your content</span>
+  }
+}
+
+// index.tsx
+export const myFeature = {
+  config: {
+    key: 'myFeature',
+    name: 'My Feature',
+    description: 'What it does',
+    enabled: true,
+    category: 'element'
+  },
+  
+  useFeature: (enabled: boolean) => {
+    const core = new FeatureCore({ enabled })
+    return {
+      renderStats: (text: string) => core.renderStats(text)
+    }
+  }
+}
+\`\`\`
+
+Never overthink placement - these 3 locations cover 99% of use cases.
 
 Feature Structure (ALL FEATURES IN ROOT):
 - app/modules/editor/features/feature-name/
@@ -111,8 +215,8 @@ Feature Structure (ALL FEATURES IN ROOT):
 Adding New Features:
 1. Create feature folder with types.ts, core.tsx, index.tsx (and prompts.ts if needed)
 2. Add to features array in registry.ts
-3. DONE! Automatically appears in settings dialog
-4. Add feature to corresponding place in the UI
+3. If toolbar needed: Add renderButton to core.tsx and integrate in editor-toolbar.tsx
+4. DONE! Automatically appears in settings dialog
 
 Feature Manager Usage:
 - useFeatureState('featureKey'): [enabled, setEnabled] 
@@ -120,39 +224,24 @@ Feature Manager Usage:
 - Components auto-sync with settings dialog
 - No circular imports via lazy initialization
 
-Integration Pattern:
-- Footer: const [enabled] = useFeatureState('featureKey') → hook(content, enabled) → render()
-- Header: Hidden when focusMode.state.isActive
-- Settings: All features managed through SettingsDialog automatically
-- Selection Toolbar: AI features via useAITextEditor(enabled)
-
-Current Features:
-- ai-text-editor: Fix/improve text with AI (has prompts.ts)
-- show-word-count: Display word statistics
-
 AI INTEGRATION RULES:
 CRITICAL: All AI interactions must use the centralized llmCall function from lib/llm/core.ts
 
 Architecture:
 - llmCall function: Central AI gateway with error handling
-- Prompts: Store in lib/llm/prompts/ for reusability
+- Prompts: Store in prompts.ts inside each feature folder
 - Electron Bridge: AI exposed via window.electronAPI.llmCall
 - Error Handling: Always check response.success before using content
 
 Usage Pattern:
-Use window.electronAPI.llmCall with system and user messages, check response.success before using content.
-
-Feature AI Integration:
-- AI logic in core.tsx files, NOT providers
-- AI prompts in prompts.ts file inside each feature folder
-- Implement loading states and error recovery
-- Default model: anthropic/claude-3.5-sonnet
-
-Best Practices:
-- Show loading indicators during AI processing
-- Provide fallback behavior when AI fails
-- Debounce rapid AI requests to avoid rate limits
-- Be mindful of token usage with large texts
+\`\`\`typescript
+const response = await window.electronAPI.llmCall(messages, model)
+if (response.success) {
+  // use response.content
+} else {
+  // handle error
+}
+\`\`\`
 
 VALIDATION WORKFLOW (CRITICAL):
 After making ANY code changes, you MUST validate your work:
@@ -167,11 +256,7 @@ After making ANY code changes, you MUST validate your work:
 
 IMPORTANT: Never restart or reload the application automatically. The application has auto-reload configured.
 
-Always strive for quality results and remember the goal of improving user experience.
-Be concise and to the point. Don't add unnecessary explanations unless asked.
-
 EXECUTION STYLE (CRITICAL - FOLLOW EXACTLY):
-– NO FUCKING RESEARCH! NO EXPLORATION! NO ANALYSIS!
 – Find file → Edit file → DONE!
 - Or Create File — Edit Structure — Apply — DONE!
 – Do NOT read multiple files "to understand structure"  
@@ -194,101 +279,21 @@ STATUS MESSAGES (CRITICAL):
 
 COMPONENT MODIFICATION RULES (CRITICAL):
 – DO NOT MODIFY existing UI components in components/ui/
+- REUSE components from components/ui (it is basic shadcn/ui library), NEVER EVER CREATE YOUR OWN THAT IS OUTSIDE OF FEATURES.
 – DO NOT MODIFY main editor components without good reason
 – Edit ONLY content and logic, NOT component structure
 – If new functionality needed - add through features, DON'T change base components
 
-## Current Project Structure
+## Implemented Feature Examples
+Here are examples of features that have been implemented. Use them as a reference for structure, style, and logic.
 
-### Main Application Structure
-- app/modules/editor/ - Main editor module
-  - pages/editor-page.tsx - Main editor page with content state and AI integration
-  - components/ - Editor UI components (header, footer, toolbar, settings, editor)
-  - features/ - Feature system with registry and manager
-  - api/ - Editor API and types
-- app/modules/agent/ - AI agent components  
-  - components/ - Agent UI components (chat, messages, document cards, tools)
-  - api/ - Agent types and utilities
-- app/modules/general/ - General app components
-  - components/ - App sidebar and general utilities
-  - api/ - General API functions
+It is IDEAL FEATURES. They're look good and working perfectly. Try to check them and re-use the patterns that is there.
 
-### UI Components (USE EXISTING ONES!)
-CRITICAL: Always use existing components from components/ui/ instead of creating new ones. 
-Available: button, input, dialog, popover, sidebar, badge, alert, scroll-area, tabs, textarea, select, etc.
+${TEXT_TRANSLATOR_PROMPT}
 
-### Editor Components (Current Structure)
-app/modules/editor/components/:
-- editor-header.tsx – Top header with export and settings
-- editor-footer.tsx – Bottom footer with word count and features
-- editor.tsx – Main contentEditable editor
-- editor-toolbar.tsx – Selection toolbar with AI features
-- editor-settings-dialog.tsx – Settings modal for API keys, theme, features
+${TASK_LIST_PROMPT}
 
-### Features Architecture
-app/modules/editor/features/:
-├── feature-manager.ts – Central feature state management
-├── registry.ts – Feature registration system
-├── ai-text-editor/ – AI text improvement (core.tsx, index.tsx, types.ts, prompts.ts)
-└── show-word-count/ – Word statistics display (core.tsx, index.tsx, types.ts)
-
-### LLM Integration (MANDATORY!)
-
-import { llmCall } from '@/lib/llm/core'
-
-const response = await llmCall([
-  { role: 'system', content: 'Your system prompt' },
-  { role: 'user', content: userInput }
-], 'anthropic/claude-3.5-sonnet')
-
-if (response.success) use response.content
-else console.error(response.error)
-
-
-const response = await window.electronAPI.llmCall(messages, model)
-
-### Feature Manager Usage (MANDATORY!)
-// Usage in components:
-import { useFeatureState } from '../features/feature-manager'
-const [enabled, setEnabled] = useFeatureState('featureKey')
-// All features automatically sync via settings dialog
-// DO NOT ADD manual toggles in header/footer!
-
-### Feature Implementation Pattern (CRITICAL!)
-Features must be implemented with ONE-LINE rendering in components:
-
-// core.tsx - ALL logic + UI render methods (MUST return React elements)
-export class FeatureCore {
-  renderWords(text: string): React.ReactElement | null {
-    if (!this.shouldShow()) return null
-    return <span className="text-xs">{this.getWordCount(text)} words</span>
-  }
-  renderButton(): React.ReactElement {
-    return <Button onClick={this.handleClick}>Action</Button>
-  }
-}
-
-// index.tsx - hook that returns render functions
-export function useFeature(enabled: boolean) {
-  const core = new FeatureCore({ enabled })
-  return {
-    renderWords: () => core.renderWords(text),
-    renderButton: () => core.renderButton()
-  }
-}
-
-// In component - ONLY ONE LINE per feature!
-const feature = useFeature(enabled)
-return <div>{feature.renderWords()}</div>  // <- ONLY THIS!
-
-NEVER put feature logic directly in components - always use render methods!
-
-### Workspace Mode (ALL AI requests!)
-– All AI changes go through workspace validation (lib/workspace/manager.ts)
-– Only successfully validated files are applied to repository
-– Files are copied to isolated workspace, modified, validated, then applied
-– If validation fails, changes are discarded and not applied 
-– Uses npm for dependency management and builds
+${FOLLOW_UP_PROMPT_DOCUMENTATION}
 `
 
 export function createWorkspacePrompt(workspacePath: string): string {

@@ -51,4 +51,10 @@ export interface NotesListApiResponse extends ApiResponse<Note[]> {
 
 export interface SettingsApiResponse extends ApiResponse<EditorSettings> {
   data?: EditorSettings
+}
+
+export interface EditorContext {
+  editorRef: React.RefObject<HTMLDivElement | null>
+  setContent: (content: string) => void
+  setShowMenu: (show: boolean) => void
 } 
