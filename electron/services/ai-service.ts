@@ -40,7 +40,7 @@ export async function initializeAI(config: any = {}) {
   }
 }
 
-export async function processRequest(message: string, rebuildCallback: () => void) {
+export async function processRequest(message: string, rebuildCallback: (workspacePath?: string) => void) {
   if (!aiAgent) return { success: false, error: 'AI Agent not initialized' }
   _claudeIsWorking = true
   try {
@@ -62,7 +62,7 @@ export async function processRequest(message: string, rebuildCallback: () => voi
             message: 'Rebuilding project...', 
             icon: '●' 
           })
-          rebuildCallback()
+          rebuildCallback(result.workspaceResult?.workspacePath)
         }, 500)
       }
       return { success: true, response: result.response, workspaceResult: result.workspaceResult }
@@ -105,7 +105,7 @@ export async function generateTitleForChat(userMessage: string) {
 
 let conversationHistories: Record<string, any[]> = {}
 
-export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string, streamId?: string, chatId?: string }, rebuildCallback?: () => void) {
+export async function createAgentStream(payload: { messages: any[], noteId?: string, noteContent?: string, streamId?: string, chatId?: string }, rebuildCallback?: (workspacePath?: string) => void) {
   const { messages, noteId, noteContent, streamId, chatId } = payload
   try {
     const { createAgentStream: createStream } = await import('../../lib/agent')
@@ -154,7 +154,7 @@ export async function createAgentStream(payload: { messages: any[], noteId?: str
   }
 }
 
-async function processStreamChunks(streamResult: any, streamId: string, rebuildCallback?: () => void, chatId?: string) {
+async function processStreamChunks(streamResult: any, streamId: string, rebuildCallback?: (workspacePath?: string) => void, chatId?: string) {
   try {
     for await (const chunk of streamResult.fullStream) {
       mainWindow?.webContents.send('ai-stream-part', { streamId, part: chunk })

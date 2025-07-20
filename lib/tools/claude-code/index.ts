@@ -6,7 +6,7 @@ export function createClaudeCodeTool(mainWindow: BrowserWindow) {
   return tool({
     description: 'Execute Claude Code agent for complex coding tasks, file editing, and project analysis',
     parameters: z.object({
-      task: z.string().describe('The specific coding task or request to perform'),
+      task: z.string().describe('The specific coding task or request to perform. Simple 1 sentence summary about the feature, no details. Best way is to send exact user prompt'),
       feature_name: z.string().optional().describe('2-3 words description of the feature being implemented (use Title Case with Capital Letters)')
     }),
     execute: async ({ task, feature_name }, context) => {

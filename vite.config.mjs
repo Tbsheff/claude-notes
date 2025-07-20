@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: process.env.NODE_ENV === 'production' ? './' : '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./', import.meta.url))
@@ -26,7 +26,6 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    noDiscovery: true,
     include: [
       'react',
       'react-dom',
@@ -56,7 +55,10 @@ export default defineConfig({
       '@radix-ui/react-tabs',
       '@radix-ui/react-toggle',
       '@radix-ui/react-toggle-group',
-      '@radix-ui/react-tooltip'
+      '@radix-ui/react-tooltip', 
+      'style-to-js',
+      'debug',
+      'extend'
     ]
   }
 }); 

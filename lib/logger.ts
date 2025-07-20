@@ -2,7 +2,8 @@ class Logger {
   private enabled: boolean = false
 
   constructor() {
-    this.enabled = process.env.DEBUG_LOGGER === 'true' || process.env.NODE_ENV === 'development'
+    const env = typeof window !== 'undefined' ? (window as any).env : process.env
+    this.enabled = env?.DEBUG_LOGGER === 'true' || env?.NODE_ENV === 'development'
   }
 
   enable() {
@@ -15,7 +16,21 @@ class Logger {
 
   private formatMessage(level: string, message: string): string {
     const timestamp = new Date().toISOString().slice(11, 23)
-    return `${timestamp} [${level}] ${message}`
+    const caller = this.getCallerFunctionName()
+    return `${timestamp} [${level}]${caller ? ` [${caller}]` : ''} ${message}`
+  }
+
+  private getCallerFunctionName(): string | null {
+    const err = new Error()
+    const stackLines = err.stack?.split('\n') || []
+    if (stackLines.length >= 4) {
+      const callerLine = stackLines[3]
+      const match = callerLine.match(/at (.*?) /)
+      if (match && match[1]) {
+        return match[1]
+      }
+    }
+    return null
   }
 
   log(message: string, ...args: any[]) {

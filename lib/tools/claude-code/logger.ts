@@ -186,9 +186,6 @@ export class ClaudeCodeLogger {
       this.emitEvent({ type: 'assistant_message', message: `Agent: ${content}`, icon: '→' })
     }
 
-    const toolCalls: any[] = (msg.message as any)?.tool_calls || []
-    toolCalls.forEach((c) => this.logTool(c))
-
     if (Array.isArray(msg.message.content)) {
       msg.message.content.forEach((item: any) => {
         if (item.type === 'tool_use') {
@@ -224,6 +221,7 @@ export class ClaudeCodeLogger {
     }
 
     const message = processToolMessage(toolName, toolInput)
+    logger.claudeCode(message)
 
     this.emitEvent({
       type: 'tool_action',

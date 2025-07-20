@@ -36,7 +36,7 @@ export function NoteEditorHeader({ content, onToggleChat, createdAt }: NoteEdito
           {formatDate(createdAt)}
         </div>
         <div className="text-sm text-muted-foreground">
-          {currentTime.toLocaleTimeString()}
+          {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
       

@@ -1,7 +1,12 @@
 import type { Note, APIKeysSettings, AppSettings } from '../app/modules/editor/api/types'
 import type { UnifiedMessage } from '../lib/agent/types'
 
-export interface ElectronAPI {
+export interface Env {
+  NODE_ENV?: string
+  DEBUG_LOGGER?: string
+}
+
+interface ElectronAPI {
   openFile: () => Promise<string | undefined>;
   saveFile: (content: string) => Promise<boolean>;
   getVersion: () => Promise<string>;
@@ -56,5 +61,6 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
+    env: Env;
   }
 } 

@@ -85,9 +85,15 @@ export class ClaudeCodeAgent {
         }
       }
 
-      ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'Applying changes to main codebase...', icon: '→' })
       const changedFilesCount = await manager.applyChanges()
-      logger.claudeCode(`Applied ${changedFilesCount} files`)
+      
+      if (changedFilesCount > 0) {
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: `Applied ${changedFilesCount} files to main codebase`, icon: '→' })
+        logger.claudeCode(`Applied ${changedFilesCount} files`)
+      } else {
+        ClaudeCodeLogger.emitEvent({ type: 'tool_action', message: 'No files changed - nothing to apply', icon: '○' })
+        logger.claudeCode('No files changed')
+      }
 
       const response = this.extractResponse(messages)
       

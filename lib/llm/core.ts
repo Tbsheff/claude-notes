@@ -18,7 +18,7 @@ export async function llmCall(
     const userMessages = messages.filter(msg => msg.role !== 'system')
     
     const lastUserMessage = userMessages[userMessages.length - 1]?.content || 'No content'
-    logger.llm(`→ ${model}: "${lastUserMessage.slice(0, 100)}..."`)
+    logger.llm(`→ ${model}: "${lastUserMessage}"`)
     
     const requestBody: any = {
       model: model.replace('anthropic/', ''),
@@ -47,7 +47,7 @@ export async function llmCall(
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.llm(`API Error ${response.status}: ${errorText.slice(0, 200)}`)
+      logger.llm(`API Error ${response.status}: ${errorText}`)
       throw new Error(`Anthropic API Error: ${response.status} - ${errorText}`)
     }
 

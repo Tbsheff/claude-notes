@@ -4,9 +4,15 @@
   "version": "0.0.0",
   "description": "AI-powered note-taking application with Claude integration",
   "main": "dist-electron/electron.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "vite",
-    "dev:electron": "NODE_ENV=development npm run build:electron && electron .",
+    "watch:electron": "tsc -p tsconfig.electron.json -w",
+    "start:electron": "wait-on http://localhost:5173 && NODE_ENV=development electron .",
+    "dev:electron": "concurrently -k \"vite\" \"npm run watch:electron\" \"npm run start:electron\"",
     "build": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
@@ -14,7 +20,9 @@
     "watch-dev": "NODE_ENV=development npm run build && npm run electron",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate --config ./lib/db/drizzle.config.js",
-    "db:push": "drizzle-kit push --config ./lib/db/drizzle.config.js"
+    "db:push": "drizzle-kit push --config ./lib/db/drizzle.config.js",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "npx @electron/rebuild"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
@@ -50,7 +58,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "ai": "^4.3.17",
     "archiver": "^7.0.1",
-    "better-sqlite3": "^12.2.0",
+    "better-sqlite3": "^11.5.0",
     "chokidar": "^4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

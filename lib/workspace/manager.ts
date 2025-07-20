@@ -128,40 +128,14 @@ export class WorkspaceManager {
 
 
   async getChangedFiles(): Promise<string[]> {
-    const changedFiles: string[] = []
-    const workspaceFiles = await this.getAllWorkspaceFiles()
-    
-    for (const file of workspaceFiles) {
-      if (this.shouldSkipPath(file)) continue
-
-      const workspaceFile = join(this.workspacePath, file)
-      const originalFile = join(this.projectRoot, file)
-
-      try {
-        let isNewFile = false
-        let originalContent = ''
-        
-        try {
-          await fs.access(originalFile)
-          originalContent = await fs.readFile(originalFile, 'utf-8')
-        } catch {
-          isNewFile = true
-        }
-        
-        if (isNewFile) {
-          changedFiles.push(file)
-        } else {
-          const workspaceContent = await fs.readFile(workspaceFile, 'utf-8')
-          if (workspaceContent !== originalContent) {
-            changedFiles.push(file)
-          }
-        }
-      } catch {
-
-      }
+    try {
+      const { setupFileWatcher } = await import('../../electron/services/file-watcher-service')
+      const { detector } = setupFileWatcher(() => null, () => new Set())
+      return await detector.getChangedFiles(this.workspacePath)
+    } catch (error) {
+      logger.claudeCode(`ERROR getting changed files: ${error}`)
+      return []
     }
-    
-    return changedFiles
   }
 
   private async getAllWorkspaceFiles(): Promise<string[]> {
@@ -198,13 +172,7 @@ export class WorkspaceManager {
     const changedFiles = await this.getChangedFiles()
     
     if (changedFiles.length > 0) {
-      logger.claudeCode(`Applied ${changedFiles.length} files: ${changedFiles.join(', ')}`)
-      const { ClaudeCodeLogger } = await import('../tools/claude-code/logger')
-      ClaudeCodeLogger.emitEvent({ 
-        type: 'tool_action', 
-        message: `Applying ${changedFiles.length} changed files to main project...`, 
-        icon: '→' 
-      })
+      logger.claudeCode(`Applying ${changedFiles.length} files: ${changedFiles.join(', ')}`)
     }
     
     for (const file of changedFiles) {

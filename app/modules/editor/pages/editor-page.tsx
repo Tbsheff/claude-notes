@@ -18,6 +18,7 @@ function EditorContent() {
   const [createdAt] = useState(new Date())
   const [sidebarKey, setSidebarKey] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  
   const {
     content,
     setContent,
@@ -34,6 +35,7 @@ function EditorContent() {
   useDocumentSync({ setContent })
 
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
+  
   const toggleChat = () => setIsChatOpen(!isChatOpen)
 
   const getPlainTextContent = () => stripHtmlTags(content || '')
