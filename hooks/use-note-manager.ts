@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Note } from '@/app/modules/editor/api/types'
 import { editorApi } from '@/app/modules/editor/api'
 import { htmlToMarkdown, markdownToHtml } from '@/lib/markdown'
+import { LocalStorage } from '@/lib/utils'
 
 export function useNoteManager() {
   const [content, setContent] = useState('')
@@ -43,7 +44,7 @@ export function useNoteManager() {
         setContent('')
         setLastSavedContent('')
         
-        localStorage.setItem('lastOpenedNote', res.data.id)
+        LocalStorage.set('lastOpenedNote', res.data.id)
         
         return res.data
       }
@@ -70,7 +71,7 @@ export function useNoteManager() {
         setLastSavedContent(note.content || '')
       }
       
-      localStorage.setItem('lastOpenedNote', note.id)
+      LocalStorage.set('lastOpenedNote', note.id)
       
     } catch (error) {
       console.error('Failed to load note:', error)
@@ -85,8 +86,8 @@ export function useNoteManager() {
       const res = await editorApi.deleteNote(id)
       if (!res.success) return
       
-      if (localStorage.getItem('lastOpenedNote') === id) {
-        localStorage.removeItem('lastOpenedNote')
+      if (LocalStorage.get<string>('lastOpenedNote') === id) {
+        LocalStorage.remove('lastOpenedNote')
       }
       
       if (currentNote?.id !== id) return
@@ -117,7 +118,7 @@ export function useNoteManager() {
           setLastSavedContent(next.content || '')
         }
         
-        localStorage.setItem('lastOpenedNote', next.id)
+        LocalStorage.set('lastOpenedNote', next.id)
       } else {
         await createNewNote()
       }
@@ -127,7 +128,7 @@ export function useNoteManager() {
   }
 
   const loadInitialNote = async () => {
-    const lastNoteId = localStorage.getItem('lastOpenedNote')
+    const lastNoteId = LocalStorage.get<string>('lastOpenedNote')
     
     if (lastNoteId) {
       try {
@@ -153,18 +154,18 @@ export function useNoteManager() {
           setCurrentNote(noteRes.data)
           setContent(markdownToHtml(noteRes.data.content || ''))
           setLastSavedContent(noteRes.data.content || '')
-          localStorage.setItem('lastOpenedNote', noteRes.data.id)
+          LocalStorage.set('lastOpenedNote', noteRes.data.id)
         } else {
           setCurrentNote(first)
           setContent(markdownToHtml(first.content || ''))
           setLastSavedContent(first.content || '')
-          localStorage.setItem('lastOpenedNote', first.id)
+          LocalStorage.set('lastOpenedNote', first.id)
         }
       } catch (error) {
         setCurrentNote(first)
         setContent(markdownToHtml(first.content || ''))
         setLastSavedContent(first.content || '')
-        localStorage.setItem('lastOpenedNote', first.id)
+        LocalStorage.set('lastOpenedNote', first.id)
       }
     } else {
       await createNewNote()

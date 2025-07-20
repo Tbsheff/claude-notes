@@ -29,3 +29,32 @@ export function cleanMessagePrefix(message: string | undefined, prefix: string):
   if (!message) return ''
   return message.replace(`${prefix}: `, '').replace(prefix, '')
 }
+
+export class LocalStorage {
+  static get<T>(key: string): T | null {
+    try {
+      const item = localStorage.getItem(key)
+      if (item === null) return null
+      return JSON.parse(item)
+    } catch {
+      return localStorage.getItem(key) as T | null
+    }
+  }
+
+  static set<T>(key: string, value: T): void {
+    try {
+      const serializedValue = typeof value === 'string' ? value : JSON.stringify(value)
+      localStorage.setItem(key, serializedValue)
+    } catch (error) {
+      console.error('Failed to set localStorage item:', error)
+    }
+  }
+
+  static remove(key: string): void {
+    try {
+      localStorage.removeItem(key)
+    } catch (error) {
+      console.error('Failed to remove localStorage item:', error)
+    }
+  }
+}

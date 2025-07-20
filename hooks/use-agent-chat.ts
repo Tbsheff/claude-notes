@@ -5,6 +5,7 @@ import { processStreamParts } from '@/lib/agent/part-processor'
 import { addClaudeCodeLog, getClaudeCodeLogs, getClaudeCodeStatus } from '@/lib/agent/part-processor'
 import { agentApi, createUserMessage, createAssistantMessage, createSystemMessage } from '@/app/modules/agent/api'
 import { Note } from '@/app/modules/editor/api/types'
+import { LocalStorage } from '@/lib/utils'
 
 interface UseAgentChatProps {
   currentNote?: Note
@@ -22,7 +23,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
   useEffect(() => {
     if (currentChatId) {
       loadChatMessages(currentChatId)
-      localStorage.setItem('last-opened-chat', currentChatId)
+      LocalStorage.set('last-opened-chat', currentChatId)
     } else {
       setMessages([])
     }
@@ -139,7 +140,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
 
   useEffect(() => {
     const loadLastOpenedChat = async () => {
-      const lastChatId = localStorage.getItem('last-opened-chat')
+      const lastChatId = LocalStorage.get<string>('last-opened-chat')
       if (lastChatId && !currentChatId) {
         try {
           const chat = await agentApi.getChat(lastChatId)
@@ -242,7 +243,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
     setCurrentChatId(null)
     setMessages([])
     setActiveTitle('New Chat')
-    localStorage.removeItem('last-opened-chat')
+    LocalStorage.remove('last-opened-chat')
     Object.keys(streamPartsRef.current).forEach(key => {
       delete streamPartsRef.current[key]
     })
@@ -253,7 +254,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
       await agentApi.deleteChat(chatId)
       
       if (currentChatId === chatId) {
-        localStorage.removeItem('last-opened-chat')
+        LocalStorage.remove('last-opened-chat')
         
         const result = await window.electronAPI.chats.list()
         if (result.success && result.chats && result.chats.length > 0) {
