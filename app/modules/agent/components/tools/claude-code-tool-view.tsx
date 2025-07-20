@@ -4,14 +4,14 @@ import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
 import { TreeToolAction, CollapseToolAction } from './tool-actions'
 import { ToolBlock } from '@/lib/agent/types'
 import { toolRegistry } from '@/lib/agent/tool-registry'
-import { markdownToHtml } from '@/lib/markdown'
+import { MarkdownRenderer } from '@/lib/markdown'
 import { cleanMessagePrefix } from '@/lib/utils'
 
 
 export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+      <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
         <div className="text-sm">No activity yet</div>
       </div>
     )
@@ -23,12 +23,12 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
         if (event.type === 'assistant_message') {
           return (
             <div key={index} className="py-2 px-3 border-b border-border last:border-0">
-              <div 
-                className="text-sm text-foreground prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: markdownToHtml(cleanMessagePrefix(event.message, 'Agent') || 'No message') 
-                }}
-              />
+              <div className="text-sm text-foreground leading-relaxed">
+                {(cleanMessagePrefix(event.message, 'Agent') || 'No message')
+                  .replace(/([^\s])\n([^\s])/g, '$1$2')
+                  .replace(/\s+/g, ' ')
+                  .trim()}
+              </div>
             </div>
           )
         }
@@ -47,7 +47,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
             return (
               <CollapseToolAction
                 key={index}
-                icon={<Edit3 className="h-3 w-3 text-orange-500" />}
+                icon={<Edit3 className="h-3 w-3 text-orange-500 dark:text-orange-400" />}
                 title={`Modified ${fileName}`}
               />
             )
@@ -58,7 +58,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<CheckSquare className="h-3 w-3 text-blue-500" />}
+                icon={<CheckSquare className="h-3 w-3 text-blue-500 dark:text-blue-400" />}
                 label="TodoWrite"
               />
             )
@@ -68,7 +68,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
             return (
               <CollapseToolAction
                 key={index}
-                icon={<Wrench className="h-3 w-3 text-purple-500" />}
+                icon={<Wrench className="h-3 w-3 text-purple-500 dark:text-purple-400" />}
                 title="Task"
               />
             )
@@ -79,7 +79,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<FileText className="h-3 w-3 text-blue-500" />}
+                icon={<FileText className="h-3 w-3 text-blue-500 dark:text-blue-400" />}
                 label="Read"
               />
             )
@@ -90,7 +90,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<Edit3 className="h-3 w-3 text-green-500" />}
+                icon={<Edit3 className="h-3 w-3 text-green-500 dark:text-green-400" />}
                 label="Write"
               />
             )
@@ -101,7 +101,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<Code className="h-3 w-3 text-gray-600" />}
+                icon={<Code className="h-3 w-3 text-gray-600 dark:text-gray-400" />}
                 label="Bash"
               />
             )
@@ -112,7 +112,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<FolderOpen className="h-3 w-3 text-yellow-600" />}
+                icon={<FolderOpen className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
                 label="List"
               />
             )
@@ -123,7 +123,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<Search className="h-3 w-3 text-purple-500" />}
+                icon={<Search className="h-3 w-3 text-purple-500 dark:text-purple-400" />}
                 label="Search"
               />
             )
@@ -134,7 +134,7 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
               <TreeToolAction
                 key={index}
                 event={event}
-                icon={<Search className="h-3 w-3 text-purple-500" />}
+                icon={<Search className="h-3 w-3 text-purple-500 dark:text-purple-400" />}
                 label="Grep"
               />
             )
@@ -144,18 +144,18 @@ export function ClaudeCodeToolView({ events }: AgentLogToolsViewProps) {
             <TreeToolAction
               key={index}
               event={event}
-              icon={<Wrench className="h-3 w-3 text-gray-500" />}
+              icon={<Wrench className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
               label="Tool"
             />
           )
         }
         
         return (
-          <div key={index} className="py-2 px-3 border-b border-gray-100 last:border-0">
+          <div key={index} className="py-2 px-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
             <div className="flex items-start gap-2">
               <span className="text-sm">{event.icon}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-gray-800 break-words max-w-full overflow-hidden">
+                <div className="text-sm text-gray-800 dark:text-gray-200 break-words max-w-full overflow-hidden">
                   {event.message}
                 </div>
               </div>

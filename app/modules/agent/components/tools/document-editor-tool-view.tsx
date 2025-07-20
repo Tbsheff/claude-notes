@@ -33,9 +33,9 @@ function renderDiff(oldContent: string, newContent: string) {
   return diffs.map(([op, text], index) => {
     switch (op) {
       case DiffMatchPatch.DIFF_INSERT:
-        return <ins key={index} className="bg-green-100 text-green-800">{text}</ins>
+        return <ins key={index} className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">{text}</ins>
       case DiffMatchPatch.DIFF_DELETE:
-        return <del key={index} className="bg-red-100 text-red-800">{text}</del>
+        return <del key={index} className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">{text}</del>
       case DiffMatchPatch.DIFF_EQUAL:
         return <span key={index}>{text}</span>
     }
@@ -43,7 +43,7 @@ function renderDiff(oldContent: string, newContent: string) {
 }
 
 function renderNewContent(content: string) {
-  return <ins className="bg-green-100 text-green-800">{content}</ins>
+  return <ins className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">{content}</ins>
 }
 
 export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, onUpdateBlock }: { 
@@ -217,14 +217,14 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
       getChangeStats(result.oldContent || '', result.newContent || '')
     
     const getActionIcon = () => {
-      if (action === 'create') return <Plus className="h-3 w-3 text-green-600" />
-      if (action === 'delete') return <Minus className="h-3 w-3 text-red-600" />
+      if (action === 'create') return <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
+      if (action === 'delete') return <Minus className="h-3 w-3 text-red-600 dark:text-red-400" />
       return null
     }
     
     const getStatusBadge = () => {
-      if (isApplied) return <Check className="h-3 w-3 text-green-600" />
-      if (isDeclined) return <X className="h-3 w-3 text-red-600" />
+      if (isApplied) return <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+      if (isDeclined) return <X className="h-3 w-3 text-red-600 dark:text-red-400" />
       return null
     }
     
@@ -260,11 +260,11 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
         
         {(result.newContent || result.oldContent) && (
           <>
-            <div className="px-2 pb-2 text-xs max-h-32 overflow-y-auto font-mono whitespace-pre-wrap text-muted-foreground">
+            <div className="px-2 pb-2 text-xs max-h-32 overflow-y-auto font-mono whitespace-pre-wrap break-all text-muted-foreground">
               {result.action === 'create' ? (
                 renderNewContent(result.newContent)
               ) : result.action === 'delete' ? (
-                <del className="bg-red-100 text-red-800">{result.oldContent}</del>
+                <del className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">{result.oldContent}</del>
               ) : (
                 renderDiff(result.oldContent || '', result.newContent || '')
               )}
@@ -276,7 +276,7 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
                   size="sm" 
                   onClick={handleDecline}
                   disabled={isApplying}
-                  className="h-5 px-1.5 text-xs bg-red-600 hover:bg-red-700 text-white"
+                  className="h-5 px-1.5 text-xs bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
                 >
                   <X className="h-2.5 w-2.5" />
                 </Button>
@@ -284,7 +284,7 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
                   size="sm" 
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="h-5 px-1.5 text-xs bg-green-600 hover:bg-green-700 text-white"
+                  className="h-5 px-1.5 text-xs bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
                 >
                   {isApplying ? (
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -301,10 +301,8 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs text-red-500 bg-red-500/10 rounded-md p-2">
-      <X className="h-3 w-3" />
-      <span className="font-medium">Document Editor</span>
-      <span className="text-xs">Error: {result?.error || 'Failed'}</span>
+    <div className="text-xs text-red-500 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 rounded-md p-2">
+      <span>Error: {result?.error || 'Failed'}</span>
     </div>
   )
 }

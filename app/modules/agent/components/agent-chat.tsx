@@ -45,9 +45,6 @@ export function AgentChat({ isOpen, onToggle, currentNote, onApplyChanges }: Age
 
   const handleSuggestionSelect = (suggestion: string) => {
     setInputValue(suggestion)
-    setTimeout(() => {
-      handleSendMessage()
-    }, 0)
   }
 
 

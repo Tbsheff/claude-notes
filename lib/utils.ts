@@ -30,6 +30,45 @@ export function cleanMessagePrefix(message: string | undefined, prefix: string):
   return message.replace(`${prefix}: `, '').replace(prefix, '')
 }
 
+export function groupItemsByDate<T>(
+  items: T[], 
+  getDateFn: (item: T) => Date
+): Record<string, T[]> {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const thirtyDaysAgo = new Date(today)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  return items.reduce((acc: Record<string, T[]>, item) => {
+    const itemDate = getDateFn(item)
+    let group: string
+
+    if (itemDate >= today) {
+      group = "Today"
+    } else if (itemDate >= yesterday) {
+      group = "Yesterday"
+    } else if (itemDate >= sevenDaysAgo) {
+      group = "Previous 7 Days"
+    } else if (itemDate >= thirtyDaysAgo) {
+      group = "Previous 30 Days"
+    } else {
+      group = "Older"
+    }
+
+    if (!acc[group]) {
+      acc[group] = []
+    }
+    acc[group].push(item)
+    return acc
+  }, {})
+}
+
+export const DATE_GROUPS = ["Today", "Yesterday", "Previous 7 Days", "Previous 30 Days", "Older"] as const
+
 export class LocalStorage {
   static get<T>(key: string): T | null {
     try {

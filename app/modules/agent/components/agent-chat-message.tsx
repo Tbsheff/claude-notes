@@ -68,10 +68,10 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
               {logs.map((line: string, idx: number) => (
                 <div key={idx} className="flex gap-1 text-xs font-mono break-all">
                   <span className={
-                    line.startsWith('+') ? 'text-green-600' : 
-                    line.startsWith('-') ? 'text-red-600' : 
-                    line.startsWith('✓') ? 'text-green-600' : 
-                    line.startsWith('~') ? 'text-yellow-600' :
+                    line.startsWith('+') ? 'text-green-600 dark:text-green-400' : 
+                    line.startsWith('-') ? 'text-red-600 dark:text-red-400' : 
+                    line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 
+                    line.startsWith('~') ? 'text-yellow-600 dark:text-yellow-400' :
                     'text-muted-foreground'
                   }>
                     {line.slice(0, 2)}
@@ -110,17 +110,13 @@ const renderErrorBlock = (block: ErrorBlock) => {
 const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, currentNote, onApplyChanges, onUpdateMessage }) => {
   const isUser = message.role === 'user'
 
-  const messageContent = useMemo(() => {
-    const elements: React.ReactNode[] = []
- 
-    message.blocks.forEach((block, index) => {
+  const messageElements = useMemo(() => {
+    return message.blocks.map((block, index) => {
       const key = `message-${message.id}-block-${index}`
- 
-      if (block.type === 'text') {
-        elements.push(<div key={key}>{renderTextBlock(block as TextBlock, isUser)}</div>)
-      } else if (block.type === 'tool') {
-        elements.push(
-          <div key={key}>
+
+      if (block.type === 'tool') {
+        return (
+          <div key={key} className="w-full">
             {renderToolBlock(block as ToolBlock, currentNote, onApplyChanges, (updatedBlock) => {
               if (onUpdateMessage) {
                 const updatedMessage = {
@@ -132,14 +128,37 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, current
             })}
           </div>
         )
-      } else if (block.type === 'thinking') {
-        elements.push(<div key={key}>{renderThinkingBlock(block as ThinkingBlock)}</div>)
-      } else if (block.type === 'error') {
-        elements.push(<div key={key}>{renderErrorBlock(block as ErrorBlock)}</div>)
       }
+
+      if (block.type === 'thinking') {
+        return (
+          <div key={key} className={cn('flex gap-4 w-full', isUser ? 'justify-end' : 'justify-start')}>
+            <div className={cn('flex flex-col space-y-2', isUser ? 'items-end max-w-[90%]' : 'items-start max-w-[90%]')}>
+              {renderThinkingBlock(block as ThinkingBlock)}
+            </div>
+          </div>
+        )
+      }
+
+      if (block.type === 'error') {
+        return (
+          <div key={key} className={cn('flex gap-4 w-full', isUser ? 'justify-end' : 'justify-start')}>
+            <div className={cn('flex flex-col space-y-2', isUser ? 'items-end max-w-[90%]' : 'items-start max-w-[90%]')}>
+              {renderErrorBlock(block as ErrorBlock)}
+            </div>
+          </div>
+        )
+      }
+
+      // default to text block
+      return (
+        <div key={key} className={cn('flex gap-4 w-full', isUser ? 'justify-end' : 'justify-start')}>
+          <div className={cn('flex flex-col space-y-2', isUser ? 'items-end max-w-[90%]' : 'items-start max-w-[90%]')}>
+            {renderTextBlock(block as TextBlock, isUser)}
+          </div>
+        </div>
+      )
     })
- 
-    return elements
   }, [message.blocks, message.id, isUser, onUpdateMessage])
 
   return (
@@ -148,10 +167,8 @@ const PureChatMessageComponent: React.FC<ChatMessageProps> = ({ message, current
       initial={{ y: 5, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
     >
-      <div className={cn("flex gap-4 w-full mb-4", isUser ? "justify-end" : "justify-start")}>
-        <div className={cn("flex flex-col space-y-2", isUser ? "items-end max-w-[90%]" : "items-start max-w-[90%]")}>
-          {messageContent}
-        </div>
+      <div className="w-full mb-4 space-y-2">
+        {messageElements}
       </div>
     </motion.div>
   )

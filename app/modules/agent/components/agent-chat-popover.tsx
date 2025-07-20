@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { List, Search, Trash2, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, groupItemsByDate, DATE_GROUPS } from '@/lib/utils'
 
 interface AgentChatPopoverProps {
   currentChatId: string | null
@@ -47,47 +47,20 @@ export function AgentChatPopover({ currentChatId, onSelectChat, onDeleteChat }: 
     setShowSearch(false)
   }
 
-  const groupChatsByDate = (chats: any[]) => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const sevenDaysAgo = new Date(today)
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const thirtyDaysAgo = new Date(today)
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    return chats.reduce((acc: Record<string, any[]>, chat) => {
-      const chatDate = new Date(chat.updatedAt || chat.createdAt)
-      let group: string
 
-      if (chatDate >= today) {
-        group = "Today"
-      } else if (chatDate >= yesterday) {
-        group = "Yesterday"
-      } else if (chatDate >= sevenDaysAgo) {
-        group = "Previous 7 Days"
-      } else if (chatDate >= thirtyDaysAgo) {
-        group = "Previous 30 Days"
-      } else {
-        group = "Older"
-      }
+  const filteredChats = [...allChats]
+    .sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt).getTime()
+      const dateB = new Date(b.updatedAt || b.createdAt).getTime()
+      return dateB - dateA
+    })
+    .filter(chat => 
+      chat.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      'untitled'.includes(searchQuery.toLowerCase())
+    )
 
-      if (!acc[group]) {
-        acc[group] = []
-      }
-      acc[group].push(chat)
-      return acc
-    }, {})
-  }
-
-  const filteredChats = allChats.filter(chat => 
-    chat.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    'untitled'.includes(searchQuery.toLowerCase())
-  )
-
-  const groupedChats = groupChatsByDate(filteredChats)
-  const dateGroups = ["Today", "Yesterday", "Previous 7 Days", "Previous 30 Days", "Older"]
+  const groupedChats = groupItemsByDate(filteredChats, (chat) => new Date(chat.updatedAt || chat.createdAt))
 
   const renderChatGroup = (chats: any[], title: string) => {
     if (chats.length === 0) return null
@@ -163,7 +136,7 @@ export function AgentChatPopover({ currentChatId, onSelectChat, onDeleteChat }: 
             {filteredChats.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">No chats found.</div>
             ) : (
-              dateGroups.map((group) =>
+              DATE_GROUPS.map((group: string) =>
                 groupedChats[group] ? (
                   <div key={group}>
                     {renderChatGroup(groupedChats[group], group)}

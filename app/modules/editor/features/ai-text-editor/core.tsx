@@ -77,7 +77,7 @@ export class AITextEditorCore {
         }`}
       >
         {isFixing ? (
-          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <Loader2 className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-400" />
         ) : (
           <Wrench className="h-4 w-4" />
         )}
@@ -97,7 +97,7 @@ export class AITextEditorCore {
         }`}
       >
         {isImproving ? (
-          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <Loader2 className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-400" />
         ) : (
           <Sparkles className="h-4 w-4" />
         )}

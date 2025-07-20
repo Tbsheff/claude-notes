@@ -48,7 +48,7 @@ export function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled || loading}
-            className="w-full min-h-[20px] max-h-[100px] resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none !bg-card text-sm py-1 px-2 placeholder:text-muted-foreground leading-tight"
+            className={`w-full min-h-[20px] max-h-[100px] resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none !bg-card text-sm py-1 px-2 placeholder:text-muted-foreground leading-tight ${value.trim() ? 'text-foreground' : 'text-muted-foreground'}`}
             rows={1}
           />
         </div>

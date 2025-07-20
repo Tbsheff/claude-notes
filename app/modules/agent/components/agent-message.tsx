@@ -73,10 +73,10 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
               {logs.map((line: string, idx: number) => (
                 <div key={idx} className="flex gap-1 text-xs font-mono break-all">
                   <span className={
-                    line.startsWith('+') ? 'text-green-600' : 
-                    line.startsWith('-') ? 'text-red-600' : 
-                    line.startsWith('✓') ? 'text-green-600' : 
-                    line.startsWith('~') ? 'text-yellow-600' :
+                    line.startsWith('+') ? 'text-green-600 dark:text-green-400' : 
+                    line.startsWith('-') ? 'text-red-600 dark:text-red-400' : 
+                    line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 
+                    line.startsWith('~') ? 'text-yellow-600 dark:text-yellow-400' :
                     'text-muted-foreground'
                   }>
                     {line.slice(0, 2)}

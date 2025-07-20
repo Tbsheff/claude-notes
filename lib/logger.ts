@@ -1,9 +1,10 @@
 class Logger {
-  private enabled: boolean = false
+  private enabled: boolean
 
   constructor() {
-    const env = typeof window !== 'undefined' ? (window as any).env : process.env
-    this.enabled = env?.DEBUG_LOGGER === 'true' || env?.NODE_ENV === 'development'
+    const debugValue = typeof process !== 'undefined' ? process.env.DEBUG_LOGGER : undefined
+
+    this.enabled = debugValue !== 'false'
   }
 
   enable() {
@@ -14,23 +15,33 @@ class Logger {
     this.enabled = false
   }
 
-  private formatMessage(level: string, message: string): string {
-    const timestamp = new Date().toISOString().slice(11, 23)
-    const caller = this.getCallerFunctionName()
-    return `${timestamp} [${level}]${caller ? ` [${caller}]` : ''} ${message}`
+  isEnabled(): boolean {
+    return this.enabled
   }
 
-  private getCallerFunctionName(): string | null {
+  private formatMessage(level: string, message: string): string {
+    const timestamp = new Date().toISOString().slice(11, 23)
+    const callStack = this.getCallStackString()
+    return `${timestamp} [${level}]${callStack ? ` [${callStack}]` : ''} ${message}`
+  }
+
+  private getCallStackFunctions(): string[] {
     const err = new Error()
     const stackLines = err.stack?.split('\n') || []
-    if (stackLines.length >= 4) {
-      const callerLine = stackLines[3]
-      const match = callerLine.match(/at (.*?) /)
+    const functions: string[] = []
+    for (let i = 2; i < stackLines.length; i++) {
+      const line = stackLines[i].trim()
+      if (line.includes('Logger.')) continue
+      const match = line.match(/at ([^ ]+) /)
       if (match && match[1]) {
-        return match[1]
+        functions.push(match[1].split('.').pop() || match[1])
       }
     }
-    return null
+    return functions
+  }
+
+  private getCallStackString(): string {
+    return this.getCallStackFunctions().join('→')
   }
 
   log(message: string, ...args: any[]) {

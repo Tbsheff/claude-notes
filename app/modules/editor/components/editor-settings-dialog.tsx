@@ -147,7 +147,7 @@ export function SettingsDialog() {
                 <div className="text-sm font-medium">Anthropic API Key</div>
                 <div className="text-xs text-muted-foreground">
                   Required for AI agent functionality. Get your key from{' '}
-                  <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                  <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline">
                     Anthropic Console
                   </a>
                 </div>

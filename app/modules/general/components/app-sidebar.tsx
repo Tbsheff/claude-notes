@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2, Trash2 } from 'lucide-react'
 import { exportTextFile } from '../api'
+import { groupItemsByDate, DATE_GROUPS } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
@@ -63,36 +64,7 @@ export function NotesSidebar({
     }
   }
 
-  const groupNotesByDate = (notes: Note[]) => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-    const thisWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000))
 
-    const groups = {
-      today: [] as Note[],
-      yesterday: [] as Note[],
-      thisWeek: [] as Note[],
-      older: [] as Note[]
-    }
-
-    notes.forEach(note => {
-      const noteDate = new Date(note.updatedAt || note.createdAt)
-      const noteDay = new Date(noteDate.getFullYear(), noteDate.getMonth(), noteDate.getDate())
-
-      if (noteDay.getTime() === today.getTime()) {
-        groups.today.push(note)
-      } else if (noteDay.getTime() === yesterday.getTime()) {
-        groups.yesterday.push(note)
-      } else if (noteDay.getTime() >= thisWeekStart.getTime()) {
-        groups.thisWeek.push(note)
-      } else {
-        groups.older.push(note)
-      }
-    })
-
-    return groups
-  }
 
   const handleDeleteNote = async (noteId: string) => {
     if (confirm('Are you sure you want to delete this note?')) {
@@ -228,7 +200,34 @@ export function NotesSidebar({
     </SidebarMenu>
   )
 
-  const groupedNotes = groupNotesByDate(notes)
+  const groupedNotes = groupItemsByDate(notes, (note) => new Date(note.updatedAt || note.createdAt))
+
+  const renderNoteGroups = () => {
+    let hasShownCreateButton = false
+
+    return DATE_GROUPS.map((group: string) => {
+      if (!groupedNotes[group] || groupedNotes[group].length === 0) return null
+      
+      const showCreateButton = !hasShownCreateButton
+      if (showCreateButton) {
+        hasShownCreateButton = true
+      }
+
+      return (
+        <SidebarGroup key={group}>
+          <SidebarGroupLabel>{group}</SidebarGroupLabel>
+          {showCreateButton && (
+            <SidebarGroupAction onClick={handleCreateNote}>
+              <Plus className="h-4 w-4" />
+            </SidebarGroupAction>
+          )}
+          <SidebarGroupContent>
+            {renderNoteGroup(groupedNotes[group])}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      )
+    })
+  }
 
   return (
     <Sidebar collapsible="offcanvas" className="border-r">
@@ -267,61 +266,7 @@ export function NotesSidebar({
               </SidebarGroupContent>
             </SidebarGroup>
           ) : (
-            <>
-              {groupedNotes.today.length > 0 && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>Today</SidebarGroupLabel>
-                  <SidebarGroupAction onClick={handleCreateNote}>
-                    <Plus className="h-4 w-4" />
-                  </SidebarGroupAction>
-                  <SidebarGroupContent>
-                    {renderNoteGroup(groupedNotes.today)}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-              
-              {groupedNotes.yesterday.length > 0 && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>Yesterday</SidebarGroupLabel>
-                  {groupedNotes.today.length === 0 && (
-                    <SidebarGroupAction onClick={handleCreateNote}>
-                      <Plus className="h-4 w-4" />
-                    </SidebarGroupAction>
-                  )}
-                  <SidebarGroupContent>
-                    {renderNoteGroup(groupedNotes.yesterday)}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-              
-              {groupedNotes.thisWeek.length > 0 && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>This Week</SidebarGroupLabel>
-                  {groupedNotes.today.length === 0 && groupedNotes.yesterday.length === 0 && (
-                    <SidebarGroupAction onClick={handleCreateNote}>
-                      <Plus className="h-4 w-4" />
-                    </SidebarGroupAction>
-                  )}
-                  <SidebarGroupContent>
-                    {renderNoteGroup(groupedNotes.thisWeek)}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-              
-              {groupedNotes.older.length > 0 && (
-                <SidebarGroup>
-                  <SidebarGroupLabel>Older</SidebarGroupLabel>
-                  {groupedNotes.today.length === 0 && groupedNotes.yesterday.length === 0 && groupedNotes.thisWeek.length === 0 && (
-                    <SidebarGroupAction onClick={handleCreateNote}>
-                      <Plus className="h-4 w-4" />
-                    </SidebarGroupAction>
-                  )}
-                  <SidebarGroupContent>
-                    {renderNoteGroup(groupedNotes.older)}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              )}
-            </>
+            renderNoteGroups()
           )}
         </div>
         
@@ -363,7 +308,7 @@ export function NotesSidebar({
                 size="sm"
                 onClick={handleClearDatabase}
                 disabled={isClearing}
-                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/50"
               >
                 {isClearing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

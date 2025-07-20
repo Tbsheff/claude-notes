@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { LocalStorage } from '@/lib/utils'
 import { NoteEditorHeader } from '../components/editor-header'
 import { NoteEditorFooter } from '../components/editor-footer'
 import { NotesSidebar } from '../../general/components/app-sidebar'
@@ -17,7 +18,10 @@ function EditorContent() {
   const [aiInitialized, setAiInitialized] = useState(false)
   const [createdAt] = useState(new Date())
   const [sidebarKey, setSidebarKey] = useState(0)
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(() => {
+    const stored = LocalStorage.get<boolean>('agentChatOpen')
+    return stored ?? false
+  })
   
   const {
     content,
@@ -36,7 +40,13 @@ function EditorContent() {
 
   const reloadSidebar = () => setSidebarKey((k) => k + 1)
   
-  const toggleChat = () => setIsChatOpen(!isChatOpen)
+  const toggleChat = () => {
+    setIsChatOpen(prev => {
+      const next = !prev
+      LocalStorage.set('agentChatOpen', next)
+      return next
+    })
+  }
 
   const getPlainTextContent = () => stripHtmlTags(content || '')
   
@@ -184,8 +194,18 @@ function EditorContent() {
 }
 
 export function EditorPage() {
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    const stored = LocalStorage.get<boolean>('upSidebarOpen')
+    return stored ?? true
+  })
+
+  const handleSidebarOpenChange = (open: boolean) => {
+    setSidebarOpen(open)
+    LocalStorage.set('upSidebarOpen', open)
+  }
+
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
       <EditorContent />
     </SidebarProvider>
   )
