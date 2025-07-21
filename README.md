@@ -1,6 +1,6 @@
 # Claude Notes 📝
 
-**Let Claude Code Edit Your Application**
+**Software That Works Exactly How You Want**
 
 Claude Notes is a simple frontend for Anthropic's Claude Code SDK. It provides a clean interface for AI-powered note-taking and code editing, where you can describe what you want in natural language and Claude will implement the changes for you.
 
@@ -15,12 +15,6 @@ Claude Notes is built on top of Claude Code SDK - Anthropic's command-line tool 
 3. **Validates changes** - Tests and verifies the implementation in the isolated workspace  
 4. **Applies or discards** - If validation passes, changes are applied. If not, the workspace is deleted
 5. **Everything stays local** - Your code, database, and data never leave your machine
-
-## Prerequisites
-
-- Node.js (v20 or higher)
-- npm or yarn package manager  
-- Anthropic API key (required for AI features)
 
 ## Setup 
 
@@ -49,10 +43,7 @@ npm run watch-prod
    - In the running application, go to Settings (3 dots in the header)
    - Insert your Anthropic API key
 
-## Use Cases 🎯
-
-### Post-Task Management
-Create and manage follow-up tasks automatically after completing work.
+## Use Cases
 
 ### AI-Powered Follow-ups
 Select any text in your documents and generate intelligent follow-up content based on the context.

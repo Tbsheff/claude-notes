@@ -132,7 +132,7 @@ export function NotesSidebar({
     
     setIsResetting(true)
     try {
-      await generalApi.resetFeatures('https://github.com/diko0071/ai-editor')
+      await generalApi.resetFeatures('https://github.com/diko0071/claude-notes')
     } catch (_error) {
       
     } finally {
