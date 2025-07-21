@@ -11,7 +11,7 @@ export interface FeatureConfig {
 
 export const features = [
   showWordCountFeature,
-  aiTextEditorFeature
+  aiTextEditorFeature,
 ]
 
 export const getFeatureByKey = (key: string) => {

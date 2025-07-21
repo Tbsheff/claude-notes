@@ -15,7 +15,6 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
   const [showMenu, setShowMenu] = React.useState(false)
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 })
   const [aiTextEditorEnabled] = useFeatureState('aiTextEditor')
-  const [followUpEnabled] = useFeatureState('followUp')
   const aiTextEditor = useAITextEditor(aiTextEditorEnabled)
   const { handleFormat, formatCommands } = getMarkdownEditorFeatures()
 
@@ -103,8 +102,6 @@ export function SelectionToolbar({ children, content: _content, setContent, edit
           {aiTextEditorEnabled && aiTextEditor.renderFixButton(editorContext)}
           
           {aiTextEditorEnabled && aiTextEditor.renderImproveButton(editorContext)}
-          
-          {followUpEnabled && <div className="bg-border -mx-1 my-1 h-px" />}
           
         </div>
       )}
