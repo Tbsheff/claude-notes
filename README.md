@@ -4,10 +4,7 @@
 
 Claude Notes is a simple frontend for Anthropic's Claude Code SDK. It provides a clean interface for AI-powered note-taking and code editing, where you can describe what you want in natural language and Claude will implement the changes for you.
 
-<video width="100%" controls>
-  <source src="./public/video/tasks_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/9e159be8-0bf2-44af-b7e5-d7a16cd83426
 
 ## How It Works
 
@@ -60,25 +57,16 @@ Create and manage follow-up tasks automatically after completing work.
 ### AI-Powered Follow-ups
 Select any text in your documents and generate intelligent follow-up content based on the context.
 
-<video width="100%" controls>
-  <source src="./public/video/follow_up_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/9850fbf9-1b32-46b8-b8bc-724480a544ca
 
 ### AI-Powered Translation  
 Select text in any document and instantly translate it to different languages using AI.
 
-<video width="100%" controls>
-  <source src="./public/video/translate_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/a5729365-c472-4017-ba1d-8842e35eaf97
 
 ### Document Writing Assistant
 Works like Cursor for documents - Claude can write, edit, and improve your content with natural language instructions.
 
-<video width="100%" controls>
-  <source src="./public/video/documents_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/1a622529-523b-4f37-b971-52cb68781a4e
 
 All data is stored locally on your machine - no external servers or cloud services are used.
