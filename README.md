@@ -2,7 +2,7 @@
 
 **Software That Works Exactly How You Want**
 
-Claude Notes is a simple frontend for Anthropic's Claude Code SDK. It provides a clean interface for AI-powered note-taking and code editing, where you can describe what you want in natural language and Claude will implement the changes for you.
+Claude Notes is an app that can rebuild itself. It starts as a note-taking app, but you can transform it into anything you want without ever touching or seeing the code.
 
 https://github.com/user-attachments/assets/9e159be8-0bf2-44af-b7e5-d7a16cd83426
 
@@ -10,11 +10,10 @@ https://github.com/user-attachments/assets/9e159be8-0bf2-44af-b7e5-d7a16cd83426
 
 Claude Notes is built on top of Claude Code SDK - Anthropic's command-line tool for agentic coding. When you request changes:
 
-1. **Creates isolated workspace** - Each change runs in a separate, clean environment
-2. **Claude processes your request** - Uses natural language to understand what you want
+1. **Creates isolated workspace** - Each change runs in a separate, clean environment 
+2. **Claude processes your request** - Writes code to the workspace to implement features
 3. **Validates changes** - Tests and verifies the implementation in the isolated workspace  
 4. **Applies or discards** - If validation passes, changes are applied. If not, the workspace is deleted
-5. **Everything stays local** - Your code, database, and data never leave your machine
 
 ## Setup 
 
