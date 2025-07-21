@@ -11,11 +11,10 @@ import { AgentChat } from '@/app/modules/agent/components/agent-chat'
 import { useNoteManager } from '@/hooks/use-note-manager'
 import { useDocumentSync } from '@/hooks/use-document-sync'
 import { stripHtmlTags } from '@/lib/utils'
-import { useFeatureState } from '../features/feature-manager'
 
 
 function EditorContent() {
-  const [aiInitialized, setAiInitialized] = useState(false)
+  const [_aiInitialized, setAiInitialized] = useState(false)
   const [createdAt] = useState(new Date())
   const [sidebarKey, setSidebarKey] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState<boolean>(() => {
@@ -27,9 +26,7 @@ function EditorContent() {
     content,
     setContent,
     currentNote,
-    lastSavedContent,
     getMarkdownContent,
-    saveCurrentNote,
     createNewNote,
     handleNoteSelect,
     handleDeleteNote,

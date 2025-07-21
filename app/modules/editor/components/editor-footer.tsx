@@ -1,5 +1,4 @@
 
-import { stripHtmlTags } from '@/lib/utils'
 import { useTextStats } from '../features/show-word-count'
 import { useFeatureState } from '../features/feature-manager'
 

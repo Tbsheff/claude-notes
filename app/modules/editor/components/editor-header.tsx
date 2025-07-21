@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
  import { Sparkles, Download } from 'lucide-react'
 import { SettingsDialog } from './editor-settings-dialog'

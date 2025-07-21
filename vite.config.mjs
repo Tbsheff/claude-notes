@@ -21,8 +21,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: false,
     rollupOptions: {
-      maxParallelFileOps: 100
+      maxParallelFileOps: 100,
+      onwarn(warning, warn) {
+        if (warning.code === 'DYNAMIC_IMPORT') return
+        warn(warning)
+      }
     }
   },
   optimizeDeps: {

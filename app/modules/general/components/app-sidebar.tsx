@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, FileText, MoreHorizontal, Download, RotateCcw, Loader2, Trash2, Edit } from 'lucide-react'
 import { exportTextFile } from '../api'
 import { groupItemsByDate, DATE_GROUPS } from '@/lib/utils'
 import {
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { editorApi } from '../../editor/api'
 import { generalApi } from '../api'
 import { Note } from '@/app/modules/editor/api'
+import { RenameNoteDialog } from './rename-note-dialog'
 
 interface NotesSidebarProps {
   currentNote: Note | null
@@ -44,6 +45,13 @@ export function NotesSidebar({
   const [isExporting, setIsExporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [renameDialog, setRenameDialog] = useState<{
+    isOpen: boolean
+    note: Note | null
+  }>({
+    isOpen: false,
+    note: null
+  })
 
 
   useEffect(() => {
@@ -57,7 +65,7 @@ export function NotesSidebar({
       if (result.success && result.data) {
         setNotes(result.data)
       }
-    } catch (error) {
+    } catch (_error) {
       
     } finally {
       setLoading(false)
@@ -71,7 +79,7 @@ export function NotesSidebar({
       try {
         await onDeleteNote(noteId)
         setNotes(notes.filter(n => n.id !== noteId))
-      } catch (error) {
+      } catch (_error) {
         
       }
     }
@@ -87,8 +95,8 @@ export function NotesSidebar({
         return
       }
       exportTextFile(note.content, note.title, 'markdown')
-    } catch (error) {
-      console.error('Export failed:', error)
+    } catch (_error) {
+      console.error('Export failed:', _error)
     }
   }
 
@@ -96,7 +104,7 @@ export function NotesSidebar({
     try {
       await onCreateNote()
       await loadNotes()
-    } catch (error) {
+    } catch (_error) {
       
     }
   }
@@ -110,7 +118,7 @@ export function NotesSidebar({
       } else {
         
       }
-    } catch (error) {
+    } catch (_error) {
       
     } finally {
       setIsExporting(false)
@@ -125,7 +133,7 @@ export function NotesSidebar({
     setIsResetting(true)
     try {
       await generalApi.resetFeatures('https://github.com/diko0071/ai-editor')
-    } catch (error) {
+    } catch (_error) {
       
     } finally {
       setIsResetting(false)
@@ -146,11 +154,42 @@ export function NotesSidebar({
       } else {
         alert('Failed to clear database: ' + result.error)
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Failed to clear database')
     } finally {
       setIsClearing(false)
     }
+  }
+
+  const handleRename = async (note: Note) => {
+    setRenameDialog({ isOpen: true, note: note })
+  }
+
+  const handleRenameConfirm = async (newTitle: string) => {
+    if (!renameDialog.note) return
+
+    try {
+      const result = await generalApi.renameNote({
+        noteId: renameDialog.note.id,
+        newTitle: newTitle.trim()
+      })
+      
+      if (result.success) {
+        setNotes(notes.map(n => 
+          n.id === renameDialog.note?.id 
+            ? { ...n, title: newTitle.trim() }
+            : n
+        ))
+      }
+    } catch (_error) {
+      console.error('Failed to rename note:', _error)
+    } finally {
+      setRenameDialog({ isOpen: false, note: null })
+    }
+  }
+
+  const handleRenameCancel = () => {
+    setRenameDialog({ isOpen: false, note: null })
   }
 
   const renderNoteGroup = (groupNotes: Note[]) => (
@@ -179,9 +218,19 @@ export function NotesSidebar({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
+                    handleRename(note)
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
                     handleExportNote(note)
                   }}
                 >
+                  <Download className="h-4 w-4 mr-2" />
                   Export
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -190,6 +239,7 @@ export function NotesSidebar({
                     handleDeleteNote(note.id)
                   }}
                 >
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -321,6 +371,12 @@ export function NotesSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+              <RenameNoteDialog
+          isOpen={renameDialog.isOpen}
+          onClose={handleRenameCancel}
+          currentTitle={renameDialog.note?.title || ''}
+          onRename={handleRenameConfirm}
+        />
     </Sidebar>
   )
 } 

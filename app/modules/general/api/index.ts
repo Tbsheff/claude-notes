@@ -1,4 +1,4 @@
-import { ExportWorkspaceResponse, ResetFeaturesResponse, ClearDatabaseResponse } from './types'
+import { ExportWorkspaceResponse, ResetFeaturesResponse, ClearDatabaseResponse, RenameNoteRequest, RenameNoteResponse } from './types'
 
 export function exportTextFile(content: string, filename: string, type: 'markdown' | 'text' = 'text') {
   console.log('exportTextFile called:', { filename, type, contentLength: content.length })
@@ -51,6 +51,25 @@ export const generalApi = {
       return result
     } catch (error) {
       console.error('Failed to clear database:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  },
+
+  renameNote: async (request: RenameNoteRequest): Promise<RenameNoteResponse> => {
+    try {
+      const loadResult = await window.electronAPI.notes.load(request.noteId)
+      if (!loadResult.success || !loadResult.note) {
+        return { success: false, error: 'Failed to load note' }
+      }
+      
+      const result = await window.electronAPI.notes.save(request.noteId, loadResult.note.content, request.newTitle)
+      return {
+        success: result.success,
+        note: result.note,
+        error: result.error
+      }
+    } catch (error) {
+      console.error('Failed to rename note:', error)
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   }

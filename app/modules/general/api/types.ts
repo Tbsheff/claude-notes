@@ -13,3 +13,14 @@ export interface ClearDatabaseResponse {
   success: boolean
   error?: string
 }
+
+export interface RenameNoteRequest {
+  noteId: string
+  newTitle: string
+}
+
+export interface RenameNoteResponse {
+  success: boolean
+  note?: any
+  error?: string
+}

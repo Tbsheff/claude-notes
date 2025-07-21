@@ -1,7 +1,7 @@
+import React, { useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { ArrowUpIcon, Loader2 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUpIcon, Plus, Mic, Loader2 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
 
 interface ChatInputProps {
   value: string

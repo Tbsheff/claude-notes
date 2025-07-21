@@ -1,3 +1,4 @@
+import React from 'react'
 import { EditorContext } from '../../api';
 
 export interface AITextEditorConfig {

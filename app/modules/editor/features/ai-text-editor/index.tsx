@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { AITextEditorCore } from './core'
-import type { AITextEditorFeature, AITextEditorState, AITextEditorResult } from './types'
+import type { AITextEditorFeature, AITextEditorState } from './types'
 import { EditorContext } from '../../api'
 
 export function useAITextEditor(enabled: boolean = true): Omit<AITextEditorFeature, 'state'> {

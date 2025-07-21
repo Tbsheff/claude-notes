@@ -1,10 +1,9 @@
-import React, { memo, useMemo, useCallback } from 'react'
-import { SparklesIcon, Loader2 } from 'lucide-react'
+import React, { memo, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { MarkdownRenderer } from '@/lib/markdown'
 import { ChatMessageProps } from '../api/types'
-import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock, ErrorBlock } from '@/lib/agent/types'
+import { MessageBlock, ToolBlock, TextBlock, ThinkingBlock, ErrorBlock } from '@/lib/agent/types'
 import { Note } from '@/app/modules/editor/api/types'
 import { getToolComponent } from '@/lib/agent/tool-registry'
 import './tools/claude-code-tool-view'
@@ -28,8 +27,7 @@ const renderTextBlock = (block: TextBlock, isUser: boolean) => {
 }
 
 const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void, onUpdateBlock?: (updatedBlock: MessageBlock) => void) => {
-  const { toolName, toolCallId, args, result, logs } = block.data
-  const isExecuting = block.status === 'executing'
+  const { toolName, args, result, logs } = block.data
   const isCompleted = block.status === 'completed'
   
   const ToolComponent = getToolComponent(toolName)
@@ -39,20 +37,6 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
         <ToolComponent block={block} currentNote={currentNote} onApplyChanges={onApplyChanges} onUpdateBlock={onUpdateBlock} />
       </div>
     )
-  }
-  
-  const getTitle = () => {
-    if (isExecuting) {
-      return `Running ${toolName}...`
-    }
-    return toolName
-  }
-
-  const getIcon = () => {
-    if (isExecuting) {
-      return <Loader2 className="h-4 w-4 animate-spin" />
-    }
-    return <SparklesIcon size={16} />
   }
   
   return (

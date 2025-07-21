@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { List, Search, Trash2, Plus } from 'lucide-react'
-import { cn, groupItemsByDate, DATE_GROUPS } from '@/lib/utils'
+import { groupItemsByDate, DATE_GROUPS } from '@/lib/utils'
 
 interface AgentChatPopoverProps {
   currentChatId: string | null
@@ -19,7 +19,7 @@ const truncateByChars = (text: string, maxLength: number) => {
   return text.substring(0, maxLength) + "..."
 }
 
-export function AgentChatPopover({ currentChatId, onSelectChat, onDeleteChat }: AgentChatPopoverProps) {
+export function AgentChatPopover({ onSelectChat, onDeleteChat }: AgentChatPopoverProps) {
   const [showSearch, setShowSearch] = useState(false)
   const [allChats, setAllChats] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')

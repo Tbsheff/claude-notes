@@ -2,6 +2,7 @@ import chokidar from 'chokidar'
 import { spawn } from 'child_process'
 import { promises as fs } from 'fs'
 import { join, relative } from 'path'
+import { logger } from '../../lib/logger'
 
 class FileChangeDetector {
   private projectRoot: string
@@ -165,18 +166,18 @@ export function setupFileWatcher(getMainWindow: () => any, getChangedFiles: () =
         const changedFiles = await detector.getChangedFiles(workspaceDir)
         shouldRebuild = changedFiles.length > 0
         if (shouldRebuild) {
-          console.log(`Claude Code changed ${changedFiles.length} files:`, changedFiles)
+          logger.info(`Claude Code changed ${changedFiles.length} files:`, changedFiles)
         }
       } else {
         const changed = getChangedFiles()
         shouldRebuild = changed.size > 0
         if (shouldRebuild) {
-          console.log(`File watcher detected ${changed.size} changed files:`, Array.from(changed))
+          logger.info(`File watcher detected ${changed.size} changed files:`, Array.from(changed))
         }
       }
       
       if (!shouldRebuild) {
-        console.log('No files changed, skipping rebuild')
+        logger.info('No files changed, skipping rebuild')
         return
       }
       
@@ -211,7 +212,7 @@ export function setupFileWatcher(getMainWindow: () => any, getChangedFiles: () =
           }
           
           if (workspaceDir) {
-            console.log('Rebuild after Claude Code completed')
+            logger.info('Rebuild after Claude Code completed')
           } else {
             getChangedFiles().clear()
           }

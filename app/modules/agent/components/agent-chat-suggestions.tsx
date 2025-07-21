@@ -9,7 +9,7 @@ const suggestions = [
     icon: <MessageSquarePlus className="h-3 w-3" />,
     title: 'Add Follow-up Feature',
     description: 'Generate follow-ups from selected text',
-    prompt: 'Implement a feature that allows me to select text and generate a follow-up question or summary as a bullet point below the selection.'
+    prompt: 'Implement a feature that allows me to select text and generate answer to the question or email'
   },
   {
     icon: <Languages className="h-3 w-3" />,

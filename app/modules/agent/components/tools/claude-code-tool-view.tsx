@@ -4,7 +4,6 @@ import { AgentLogToolsViewProps } from '@/app/modules/agent/api/types'
 import { TreeToolAction, CollapseToolAction } from './tool-actions'
 import { ToolBlock } from '@/lib/agent/types'
 import { toolRegistry } from '@/lib/agent/tool-registry'
-import { MarkdownRenderer } from '@/lib/markdown'
 import { cleanMessagePrefix } from '@/lib/utils'
 
 

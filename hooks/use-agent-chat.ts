@@ -39,7 +39,32 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
       streamPartsRef.current[streamId] = newParts
 
       setMessages(prev => 
-        agentApi.updateMessageById(prev, streamId, (m) => processStreamParts(streamId, newParts, m))
+        agentApi.updateMessageById(prev, streamId, (oldMessage) => {
+          const newMessage = processStreamParts(streamId, newParts, oldMessage)
+          
+          // Preserve Apply/Decline states for tool blocks
+          const newBlocks = newMessage.blocks.map(newBlock => {
+            if (newBlock.type === 'tool') {
+              const oldBlock = oldMessage.blocks.find(b => b.id === newBlock.id && b.type === 'tool')
+              if (oldBlock && oldBlock.data.result) {
+                return {
+                  ...newBlock,
+                  data: {
+                    ...newBlock.data,
+                    result: {
+                      ...newBlock.data.result,
+                      isApplied: oldBlock.data.result.isApplied,
+                      isDeclined: oldBlock.data.result.isDeclined
+                    }
+                  }
+                }
+              }
+            }
+            return newBlock
+          })
+          
+          return { ...newMessage, blocks: newBlocks }
+        })
       )
     }
 
@@ -49,9 +74,32 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
       if (finalParts.length > 0) {
         const finalMessage = processStreamParts(streamId, finalParts)
         finalMessage.metadata.isStreaming = false
-        setMessages(prev => agentApi.updateMessageById(prev, streamId, () => finalMessage))
         
-        await agentApi.updateMessage(finalMessage)
+        setMessages(prev => agentApi.updateMessageById(prev, streamId, (oldMessage) => {
+          const finalBlocks = finalMessage.blocks.map(newBlock => {
+            if (newBlock.type === 'tool') {
+              const oldBlock = oldMessage.blocks.find(b => b.id === newBlock.id && b.type === 'tool')
+              if (oldBlock && oldBlock.data.result) {
+                return {
+                  ...newBlock,
+                  data: {
+                    ...newBlock.data,
+                    result: {
+                      ...newBlock.data.result,
+                      isApplied: oldBlock.data.result.isApplied,
+                      isDeclined: oldBlock.data.result.isDeclined
+                    }
+                  }
+                }
+              }
+            }
+            return newBlock
+          })
+          
+          const preservedFinalMessage = { ...finalMessage, blocks: finalBlocks }
+          agentApi.updateMessage(preservedFinalMessage)
+          return preservedFinalMessage
+        }))
       }
       delete streamPartsRef.current[data.streamId]
       setIsLoading(false)
@@ -72,7 +120,10 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
               data: {
                 ...block.data,
                 logs: [...getClaudeCodeLogs(toolCallId)],
-                currentStatus: getClaudeCodeStatus(toolCallId, block.data.args?.feature_name)
+                currentStatus: getClaudeCodeStatus(toolCallId, block.data.args?.feature_name),
+                result: block.data.result ? {
+                  ...block.data.result
+                } : undefined
               }
             }
           }
@@ -88,7 +139,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
     }
 
     const handleStreamError = async (_event: any, data: { error: string; friendlyMessage?: string; timestamp: string }) => {
-      const { error, friendlyMessage, timestamp } = data
+      const { error, friendlyMessage } = data
       
       setMessages(prev => {
         const lastMessage = prev[prev.length - 1]
@@ -148,7 +199,7 @@ export function useAgentChat({ currentNote }: UseAgentChatProps) {
             setCurrentChatId(lastChatId)
             setActiveTitle(chat.title || 'Untitled')
           }
-        } catch (error) {
+        } catch (_error) {
           
         }
       }

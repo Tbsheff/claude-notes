@@ -3,8 +3,13 @@ class Logger {
 
   constructor() {
     const debugValue = typeof process !== 'undefined' ? process.env.DEBUG_LOGGER : undefined
+    const isProduction = typeof process !== 'undefined' ? process.env.NODE_ENV === 'production' : false
 
-    this.enabled = debugValue !== 'false'
+    if (isProduction) {
+      this.enabled = debugValue === 'true'
+    } else {
+      this.enabled = debugValue !== 'false'
+    }
   }
 
   enable() {

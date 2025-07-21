@@ -27,7 +27,7 @@ type CodeBlockProps = {
 
 export const CodeBlock = ({
   language,
-  filename,
+  filename: _filename,
   code,
   highlightLines = [],
   tabs = [],

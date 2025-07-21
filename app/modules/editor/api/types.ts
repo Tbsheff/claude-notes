@@ -1,3 +1,5 @@
+import React from 'react'
+
 export interface NoteMetadata {
   id: string
   title: string

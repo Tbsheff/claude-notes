@@ -64,7 +64,7 @@ export function getClaudeCodeStatus(toolCallId: string, featureName?: string): s
 export function processStreamParts(
   streamId: string,
   parts: any[],
-  existingMessage?: UnifiedMessage
+  _existingMessage?: UnifiedMessage
 ): UnifiedMessage {
   let content = ''
   const toolCalls: Record<string, any> = {}
@@ -72,7 +72,6 @@ export function processStreamParts(
   const toolCallOrder: string[] = []
   
   let currentTextContent = ''
-  let hasToolCalls = false
 
   for (const part of parts) {
     switch (part.type) {
@@ -90,7 +89,6 @@ export function processStreamParts(
           })
           currentTextContent = ''
         }
-        hasToolCalls = true
         toolCallOrder.push(part.toolCallId)
         toolCalls[part.toolCallId] = {
           toolCallId: part.toolCallId,
@@ -225,7 +223,7 @@ export function processStreamParts(
 
 export function handleClaudeCodeEvent(
   event: any,
-  streamingMessage: UnifiedMessage | null,
+  _streamingMessage: UnifiedMessage | null,
   streamPartsRef: MutableRefObject<Record<string, any[]>>,
   setStreamingMessage: Dispatch<SetStateAction<UnifiedMessage | null>>
 ): void {

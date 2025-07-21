@@ -1,4 +1,4 @@
-import { FC } from 'react'
+import React from 'react'
 import { ToolBlock } from './types'
 import { Note } from '@/app/modules/editor/api/types'
 

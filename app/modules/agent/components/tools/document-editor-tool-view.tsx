@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { FileText, Loader2, Check, X, Plus, Minus } from 'lucide-react'
 import { ToolBlock } from '@/lib/agent/types'
 import { Note } from '@/app/modules/editor/api/types'
@@ -7,24 +7,6 @@ import * as DiffMatchPatch from 'diff-match-patch'
 import { Button } from '@/components/ui/button'
 
 const dmp = new DiffMatchPatch.diff_match_patch()
-
-function getChangeStats(oldContent: string, newContent: string) {
-  const diffs = dmp.diff_main(oldContent, newContent)
-  dmp.diff_cleanupSemantic(diffs)
-  
-  let added = 0
-  let removed = 0
-  
-  diffs.forEach(([op, text]) => {
-    if (op === DiffMatchPatch.DIFF_INSERT) {
-      added += text.length
-    } else if (op === DiffMatchPatch.DIFF_DELETE) {
-      removed += text.length
-    }
-  })
-  
-  return { added, removed }
-}
 
 function renderDiff(oldContent: string, newContent: string) {
   const diffs = dmp.diff_main(oldContent, newContent)
@@ -52,12 +34,13 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
   onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void,
   onUpdateBlock?: (block: ToolBlock) => void
 }) {
+  const [isApplying, setIsApplying] = useState(false)
+  
   const { result, args } = block.data
   if (!result && !args) {
     return null
   }
   const isExecuting = block.status === 'executing'
-  const [isApplying, setIsApplying] = useState(false)
   const isApplied = result?.isApplied || false
   const isDeclined = result?.isDeclined || false
 
@@ -173,7 +156,7 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
     if (typeof args === 'string') {
       try {
         parsedArgs = JSON.parse(args)
-      } catch (e) {
+      } catch (_e) {
         const actionMatch = args.match(/"action":\s*"([^"]*)"/)
         const titleMatch = args.match(/"title":\s*"([^"]*)"/)
         
@@ -210,11 +193,6 @@ export function DocumentEditorChatBlock({ block, currentNote, onApplyChanges, on
 
   if (result?.success) {
     const action = result.action
-    const stats = action === 'create' ? 
-      { added: result.newContent?.length || 0, removed: 0 } :
-      action === 'delete' ? 
-      { added: 0, removed: result.oldContent?.length || 0 } :
-      getChangeStats(result.oldContent || '', result.newContent || '')
     
     const getActionIcon = () => {
       if (action === 'create') return <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />

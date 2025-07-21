@@ -1,3 +1,7 @@
+import React from 'react'
+import ReactMarkdown from 'react-markdown'
+import { Components } from 'react-markdown'
+import { CodeBlock } from '@/components/ui/codeblock'
 import { Bold, Italic, Underline, Copy, Scissors, Heading1, Heading2, Heading3, List, ListOrdered } from 'lucide-react'
 
 export const htmlToMarkdown = (html: string): string => {
@@ -125,10 +129,6 @@ export const markdownToHtml = (markdown: string): string => {
 
   return htmlParts.join('')
 }
-
-import ReactMarkdown from 'react-markdown'
-import { Components } from 'react-markdown'
-import { CodeBlock } from '@/components/ui/codeblock'
 
 const markdownComponents: Components = {
   ul: ({ children }) => (

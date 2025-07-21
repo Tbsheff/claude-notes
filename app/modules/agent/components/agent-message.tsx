@@ -1,10 +1,9 @@
-import React, { memo, useMemo, useCallback } from 'react'
-import { SparklesIcon, Loader2 } from 'lucide-react'
+import React, { memo, useMemo } from 'react'
+import { Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { ChatMessageProps } from '../api/types'
-import { CollapsibleTool } from './tools/collapsible-tool'
-import { UnifiedMessage, MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
+import { MessageBlock, ToolBlock, TextBlock, ThinkingBlock } from '@/lib/agent/types'
 import { Note } from '@/app/modules/editor/api/types'
 import { getToolComponent } from '@/lib/agent/tool-registry'
 import './tools/claude-code-tool-view'
@@ -28,7 +27,7 @@ const renderTextBlock = (block: TextBlock, isUser: boolean) => {
 }
 
 const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: (data: { action: string; content: string; newNote?: Note }) => void, onUpdateBlock?: (updatedBlock: MessageBlock) => void) => {
-  const { toolName, toolCallId, args, result, logs } = block.data
+  const { toolName, args, result, logs } = block.data
   const isExecuting = block.status === 'executing'
   const isCompleted = block.status === 'completed'
   
@@ -41,58 +40,44 @@ const renderToolBlock = (block: ToolBlock, currentNote?: Note, onApplyChanges?: 
     )
   }
   
-  const getTitle = () => {
-    if (isExecuting) {
-      return `Running ${toolName}...`
-    }
-    return toolName
-  }
-
-  const getIcon = () => {
-    if (isExecuting) {
-      return <Loader2 className="h-4 w-4 animate-spin" />
-    }
-    return <SparklesIcon size={16} />
-  }
-  
   return (
-    <div className="w-full">
-      <CollapsibleTool 
-        title={getTitle()}
-        icon={getIcon()}
-        dataTestId={isExecuting ? `${toolName}-executing` : `${toolName}-completed`}
-      >
-        <div className="space-y-1 text-sm">
-          {args && (
-            <div className="text-muted-foreground font-medium">
-              Args: {JSON.stringify(args, null, 2)}
-            </div>
-          )}
-          {logs && logs.length > 0 && (
-            <div className="space-y-1 text-sm">
-              {logs.map((line: string, idx: number) => (
-                <div key={idx} className="flex gap-1 text-xs font-mono break-all">
-                  <span className={
-                    line.startsWith('+') ? 'text-green-600 dark:text-green-400' : 
-                    line.startsWith('-') ? 'text-red-600 dark:text-red-400' : 
-                    line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 
-                    line.startsWith('~') ? 'text-yellow-600 dark:text-yellow-400' :
-                    'text-muted-foreground'
-                  }>
-                    {line.slice(0, 2)}
-                  </span>
-                  <span className="flex-1">{line.slice(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {isCompleted && result && (
-            <div className="text-muted-foreground text-xs">
-              {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-            </div>
-          )}
-        </div>
-      </CollapsibleTool>
+    <div className="w-full border rounded-lg p-3 bg-muted/50">
+      <div className="flex items-center gap-2 mb-2">
+        {isExecuting && <Loader2 className="h-4 w-4 animate-spin" />}
+        <span className="font-medium text-sm">
+          {isExecuting ? `Running ${toolName}...` : toolName}
+        </span>
+      </div>
+      <div className="space-y-1 text-sm">
+        {args && (
+          <div className="text-muted-foreground font-medium">
+            Args: {JSON.stringify(args, null, 2)}
+          </div>
+        )}
+        {logs && logs.length > 0 && (
+          <div className="space-y-1 text-sm">
+            {logs.map((line: string, idx: number) => (
+              <div key={idx} className="flex gap-1 text-xs font-mono break-all">
+                <span className={
+                  line.startsWith('+') ? 'text-green-600 dark:text-green-400' : 
+                  line.startsWith('-') ? 'text-red-600 dark:text-red-400' : 
+                  line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 
+                  line.startsWith('~') ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-muted-foreground'
+                }>
+                  {line.slice(0, 2)}
+                </span>
+                <span className="flex-1">{line.slice(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {isCompleted && result && (
+          <div className="text-muted-foreground text-xs">
+            {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
