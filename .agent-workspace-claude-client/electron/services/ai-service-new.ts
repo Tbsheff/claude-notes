@@ -3,11 +3,14 @@ import os from 'os'
 import { authService } from './auth-service'
 import { BrowserWindow } from 'electron'
 import { loadSettings } from './settings-service'
+import { ClaudeClient } from '../../lib/llm/claude-client'
+import type { TokenSet } from '../../lib/auth/claude'
 
 let aiAgent: any = null
 let _claudeIsWorking = false
 let changedFiles = new Set<string>()
 let mainWindow: BrowserWindow | null = null
+let claudeClient: ClaudeClient | null = null
 
 export function setMainWindow(win: BrowserWindow) {
   mainWindow = win
@@ -24,33 +27,73 @@ export function getMainWindow() {
 async function getStoredApiKeys() {
   const { settings } = await loadSettings()
   return { anthropicApiKey: settings?.apiKeys?.anthropicApiKey || '' }
-export async function initializeAI(config: any = {}) {
-  const stored = await getStoredApiKeys()
-  
-  // First, try to use OAuth token
-  let apiKey: string | null = null
-  
-  try {
-    const tokens = await authService.getTokens()
-    if (tokens && tokens.access_token) {
-      apiKey = tokens.access_token
-      console.log('Using OAuth token for AI agent')
+}
+
+/**
+ * Get or create Claude client instance
+ */
+async function getClaudeClient(): Promise<ClaudeClient> {
+  if (!claudeClient) {
+    const stored = await getStoredApiKeys()
+    
+    // Try to get OAuth tokens
+    let oauthTokens: TokenSet | null = null
+    try {
+      oauthTokens = await authService.getTokens()
+    } catch (error) {
+      console.log('No OAuth tokens available')
     }
-  } catch (error) {
-    console.log('No OAuth token available, falling back to API key')
+
+    claudeClient = new ClaudeClient({
+      apiKey: stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY,
+      oauthTokens: oauthTokens || undefined,
+      onTokenRefresh: async (tokens) => {
+        // Persist refreshed tokens
+        try {
+          await authService.storeTokens(tokens)
+          console.log('Refreshed tokens persisted')
+        } catch (error) {
+          console.error('Failed to persist refreshed tokens:', error)
+        }
+      }
+    })
   }
-  
-  // Fall back to API key if no OAuth token
-  if (!apiKey) {
-    apiKey = stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY || config.apiKey
-  }
-  
-  if (!apiKey) return { success: false, error: 'Anthropic API key not found. Please configure it in Settings.' }
+
+  return claudeClient
+}
+
+export async function initializeAI(config: any = {}) {
   try {
+    const client = await getClaudeClient()
+    
+    // Check if we have valid authentication
+    if (!client.hasValidAuth()) {
+      return { 
+        success: false, 
+        error: 'No valid authentication found. Please configure API key in Settings or login with OAuth.' 
+      }
+    }
+    
+    const authType = client.getAuthType()
+    console.log(`Initializing AI agent with ${authType} authentication`)
+    
+    // For the ClaudeCodeAgent, we need to extract the actual auth credential
+    let apiKey: string
+    if (authType === 'oauth') {
+      // For now, we'll need to pass the access token as the API key
+      // This assumes ClaudeCodeAgent can handle Bearer tokens
+      const tokens = await authService.getTokens()
+      apiKey = tokens?.access_token || ''
+    } else {
+      const stored = await getStoredApiKeys()
+      apiKey = stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY || config.apiKey || ''
+    }
+    
     const { ClaudeCodeAgent } = await import('../../lib/tools/claude-code/core')
     const projectRoot = path.resolve(__dirname, '../../../')
     aiAgent = new ClaudeCodeAgent({ apiKey })
     await aiAgent.initialize()
+    
     return { success: true }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) }
@@ -93,7 +136,23 @@ export async function processRequest(message: string, rebuildCallback: (workspac
 
 export async function llmCall(messages: any, model: string) {
   try {
+    // Update client auth before making the call
     const stored = await getStoredApiKeys()
+    const client = await getClaudeClient()
+    
+    // Update with latest auth
+    let oauthTokens: TokenSet | null = null
+    try {
+      oauthTokens = await authService.getTokens()
+    } catch (error) {
+      // No OAuth tokens
+    }
+    
+    client.updateAuth({
+      apiKey: stored.anthropicApiKey,
+      oauthTokens: oauthTokens || undefined
+    })
+    
     const { llmCall } = await import('../../lib/llm/core')
     return await llmCall(messages, model, stored)
   } catch (e) {
@@ -185,38 +244,6 @@ async function processStreamChunks(streamResult: any, streamId: string, rebuildC
       if (!conversationHistories[currentChatId]) {
         conversationHistories[currentChatId] = []
       }
-      }
-    })
-
-    const streamResult = createStream(conversationHistory, { 
-      noteId, 
-      noteContent,
-      mainWindow
-    })
-    
-    const finalStreamId = streamId || `stream-${Date.now()}`
-    processStreamChunks(streamResult, finalStreamId, rebuildCallback, currentChatId)
-    
-    return { success: true, streamId: finalStreamId }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) }
-  }
-}
-
-async function processStreamChunks(streamResult: any, streamId: string, rebuildCallback?: (workspacePath?: string) => void, chatId?: string) {
-  try {
-    for await (const chunk of streamResult.fullStream) {
-      mainWindow?.webContents.send('ai-stream-part', { streamId, part: chunk })
-    }
-    
-    mainWindow?.webContents.send('ai-stream-complete', { streamId })
-    
-    const finalResult = await streamResult; 
-    if (finalResult.response?.messages && chatId) {
-      const currentChatId = chatId || 'default'
-      if (!conversationHistories[currentChatId]) {
-        conversationHistories[currentChatId] = []
-      }
       conversationHistories[currentChatId].push(...finalResult.response.messages)
     }
     
@@ -235,4 +262,4 @@ async function processStreamChunks(streamResult: any, streamId: string, rebuildC
       friendlyMessage
     })
   }
-} 
+}
