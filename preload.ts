@@ -37,6 +37,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateTitle: (chatId, title) => ipcRenderer.invoke('chats:updateTitle', chatId, title),
     delete: (chatId) => ipcRenderer.invoke('chats:delete', chatId)
   },
+  auth: {
+    startOAuth: () => ipcRenderer.invoke('auth:start-oauth'),
+    storeTokens: (tokens) => ipcRenderer.invoke('auth:store-tokens', tokens),
+    getTokens: () => ipcRenderer.invoke('auth:get-tokens'),
+    clearTokens: () => ipcRenderer.invoke('auth:clear-tokens'),
+    hasValidTokens: () => ipcRenderer.invoke('auth:has-valid-tokens'),
+    getUserInfo: () => ipcRenderer.invoke('auth:get-user-info')
+  },
   app: {
     reloadWindow: () => ipcRenderer.invoke('app:reloadWindow'),
     rebuildAndReload: () => ipcRenderer.invoke('app:rebuildAndReload')
@@ -76,4 +84,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
     update: (request) => ipcRenderer.invoke('document:update', request),
     getContent: () => ipcRenderer.invoke('document:get-content')
   }
-}) 
+})
