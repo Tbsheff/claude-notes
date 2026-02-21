@@ -9,6 +9,7 @@ import { setupGeneralHandlers } from './electron/ipc/general-handlers'
 import { setupDocumentHandlers } from './electron/ipc/document-handlers'
 import { setupAuthHandlers } from './electron/ipc/auth-handlers'
 import { setupFileWatcher } from './electron/services/file-watcher-service'
+import { setupImsgHandlers } from './electron/ipc/imsg-handlers'
 
 const fileWatcher = setupFileWatcher(getMainWindow, getChangedFiles)
 
@@ -20,5 +21,4 @@ setupSettingsHandlers()
 setupGeneralHandlers(getMainWindow)
 setupDocumentHandlers(getMainWindow)
 setupAuthHandlers()
-
- 
+setupImsgHandlers()

@@ -23,8 +23,9 @@
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate --config ./lib/db/drizzle.config.js",
     "db:push": "drizzle-kit push --config ./lib/db/drizzle.config.js",
-    "postinstall": "electron-builder install-app-deps",
-    "rebuild": "npx @electron/rebuild"
+    "postinstall": "electron-builder install-app-deps && node scripts/download-imsg.js",
+    "rebuild": "npx @electron/rebuild",
+    "download:imsg": "node scripts/download-imsg.js"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
